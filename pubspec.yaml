@@ -1,0 +1,50 @@
+name: catat_uang
+description: "CatatUang - aplikasi pembukuan digital untuk UMKM Indonesia."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  drift: ^2.35.3
+  flutter_riverpod: ^3.4.3
+  flutter_secure_storage: ^11.2.0
+  go_router: ^17.5.0
+  intl: ^0.20.2
+  path: ^1.9.1
+  path_provider: ^2.1.6
+  supabase_flutter: ^2.18.3
+  uuid: ^4.6.0
+  image_picker: ^1.2.4
+  connectivity_plus: ^7.3.2
+  fl_chart: ^1.3.0
+  pdf: ^3.13.1
+  printing: ^5.15.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  build_runner: ^2.15.1
+  drift_dev: ^2.35.2
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+  fonts:
+    - family: PlusJakartaSans
+      fonts:
+        - asset: assets/fonts/PlusJakartaSans-400.ttf
+          weight: 400
+        - asset: assets/fonts/PlusJakartaSans-500.ttf
+          weight: 500
+        - asset: assets/fonts/PlusJakartaSans-600.ttf
+          weight: 600
+        - asset: assets/fonts/PlusJakartaSans-700.ttf
+          weight: 700
