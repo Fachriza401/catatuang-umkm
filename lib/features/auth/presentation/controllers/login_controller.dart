@@ -17,10 +17,17 @@ class LoginController extends AsyncNotifier<PostAuthDestination?> {
     try {
       final signIn = ref.read(signInUseCaseProvider);
       final user = await signIn(SignInParams(email: email, password: password));
-      final resolveDestination = ref.read(
-        resolvePostAuthDestinationUseCaseProvider,
-      );
-      final destination = await resolveDestination(user.id);
+
+      PostAuthDestination destination = PostAuthDestination.home;
+      try {
+        final resolveDestination = ref.read(
+          resolvePostAuthDestinationUseCaseProvider,
+        );
+        destination = await resolveDestination(user.id);
+      } catch (_) {
+        destination = PostAuthDestination.home;
+      }
+
       state = AsyncData(destination);
       return destination;
     } catch (error, stackTrace) {

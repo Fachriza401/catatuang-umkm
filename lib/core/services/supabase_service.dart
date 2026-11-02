@@ -26,8 +26,22 @@ class SupabaseService {
     });
   }
 
+  Future<void> ensureInitialized() async {
+    if (_isInitialized) return;
+    await initialize();
+  }
+
   Future<void> _initialize() async {
     if (!isConfigured || _isInitialized) return;
+
+    try {
+      // If already initialized in this process (e.g. hot restart)
+      Supabase.instance.client;
+      _isInitialized = true;
+      return;
+    } catch (_) {
+      // Supabase.instance throws if not yet initialized
+    }
 
     await Supabase.initialize(
       url: url,

@@ -194,5 +194,57 @@ select extensions.is(
   'valid active subscription grants the Business entitlement'
 );
 
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000002', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+select extensions.throws_ok(
+  $$insert into public.payment_orders (
+    business_id, plan, amount, provider_order_id
+  ) values (
+    '10000000-0000-4000-8000-000000000002', 'premium', 49000,
+    'sub_client_denied'
+  )$$,
+  '42501',
+  null,
+  'authenticated users cannot create payment orders'
+);
+select extensions.throws_ok(
+  $$select public.apply_payment_notification('sub_client_denied', 'paid')$$,
+  '42501',
+  null,
+  'authenticated users cannot apply payment notifications'
+);
+reset role;
+
+set local role service_role;
+select set_config('request.jwt.claim.role', 'service_role', true);
+insert into public.payment_orders (
+  id, business_id, plan, amount, provider_order_id
+) values (
+  '30000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000002',
+  'premium', 49000, 'sub_test_paid_1'
+);
+select extensions.is(
+  (public.apply_payment_notification(
+    'sub_test_paid_1', 'paid', 'trx-test-1', 'qris', '{}'::jsonb
+  ))->>'processed',
+  'true',
+  'service role can apply a paid notification'
+);
+select extensions.is(
+  public.effective_business_plan('10000000-0000-4000-8000-000000000002'),
+  'premium',
+  'paid notification grants the Premium entitlement'
+);
+select extensions.is(
+  (public.apply_payment_notification(
+    'sub_test_paid_1', 'paid', 'trx-test-1', 'qris', '{}'::jsonb
+  ))->>'processed',
+  'false',
+  'duplicate paid notification is ignored'
+);
+reset role;
+
 select * from extensions.finish();
 rollback;

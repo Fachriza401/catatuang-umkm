@@ -19,12 +19,18 @@ import '../../../../core/widgets/app_loading_indicator.dart';
 import '../../../../core/widgets/app_snackbar.dart';
 import '../../../../core/widgets/app_status_banner.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../business_profile/domain/entities/business_access.dart';
 import '../../../business_profile/presentation/providers/business_access_provider.dart';
+import '../../../debts/domain/entities/debt.dart';
+import '../../../debts/domain/entities/debt_type.dart';
+import '../../../debts/presentation/providers/debt_reminder_providers.dart';
 import '../../../transactions/domain/entities/money_transaction.dart';
 import '../../../transactions/presentation/providers/transaction_providers.dart';
 import '../../domain/entities/dashboard_data.dart';
 import '../../domain/entities/dashboard_period.dart';
+import '../providers/balance_privacy_provider.dart';
 import '../providers/dashboard_providers.dart';
+import '../widgets/balance_pin_dialog.dart';
 import '../widgets/income_expense_chart.dart';
 import '../widgets/transaction_tile.dart';
 
@@ -36,8 +42,8 @@ class DashboardPage extends ConsumerStatefulWidget {
 }
 
 class _DashboardPageState extends ConsumerState<DashboardPage> {
-  bool _hideBalance = false;
   bool _isSyncing = false;
+  final Set<String> _notifiedDueDebtIds = <String>{};
 
   @override
   void initState() {
@@ -68,29 +74,123 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   }
 
   Future<void> _logout() async {
-    final confirmed = await showDialog<bool>(
+    final user = ref.read(currentAuthUserProvider);
+    final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Keluar dari akun?'),
-          content: const Text(
-            'Data transaksi tetap tersimpan di perangkat ini dan akan '
-            'disinkronkan saat Anda masuk kembali.',
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.xxl),
+        ),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.xl,
+              AppSpacing.sm,
+              AppSpacing.xl,
+              AppSpacing.xl + MediaQuery.viewInsetsOf(sheetContext).bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.danger, Color(0xFFF97316)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(AppRadius.xl),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.danger.withValues(alpha: 0.28),
+                          blurRadius: 18,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.logout_rounded,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  'Keluar dari akun?',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  user == null
+                      ? 'Anda akan keluar dari sesi ini.'
+                      : 'Sesi ${user.displayName} akan diakhiri di perangkat ini.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: AppColors.infoSoft.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(
+                      color: AppColors.info.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.shield_outlined,
+                        size: 18,
+                        color: AppColors.info,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          'Data transaksi tetap tersimpan di perangkat dan '
+                          'akan disinkronkan kembali saat Anda masuk.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                AppButton(
+                  label: 'Ya, keluar sekarang',
+                  icon: Icons.logout_rounded,
+                  variant: AppButtonVariant.danger,
+                  onPressed: () => Navigator.of(sheetContext).pop(true),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                AppButton(
+                  label: 'Tetap di akun',
+                  variant: AppButtonVariant.ghost,
+                  onPressed: () => Navigator.of(sheetContext).pop(false),
+                ),
+              ],
+            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Keluar'),
-            ),
-          ],
         );
       },
     );
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
 
     try {
       await ref.read(signOutUseCaseProvider)(const NoParams());
@@ -109,13 +209,72 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final user = ref.watch(currentAuthUserProvider);
     final period = ref.watch(dashboardPeriodProvider);
     final dashboard = ref.watch(dashboardDataProvider);
-    final canCreateTransactions = ref
+    final privacy = ref.watch(balancePrivacyProvider);
+    final access = ref
         .watch(businessAccessProvider)
         .when(
-          data: (access) => access?.canCreateTransactions ?? false,
-          loading: () => false,
-          error: (_, _) => false,
+          data: (value) => value,
+          loading: () => null,
+          error: (_, _) => null,
         );
+    final canCreateTransactions = access?.canCreateTransactions ?? false;
+    BusinessAccess? resolvedAccess = access;
+    if (resolvedAccess == null && user != null) {
+      resolvedAccess = BusinessAccess.ownerFallback(user.id);
+    }
+
+    final businessId = resolvedAccess?.businessId;
+    final dueDebtsAsync = businessId == null
+        ? const AsyncValue<List<Debt>>.data(<Debt>[])
+        : ref.watch(dueDebtsProvider(businessId));
+    final dueDebtList = dueDebtsAsync.value ?? <Debt>[];
+    final dueSoonAsync = businessId == null
+        ? const AsyncValue<List<Debt>>.data(<Debt>[])
+        : ref.watch(dueSoonDebtsProvider(businessId));
+    final dueSoonList = dueSoonAsync.value ?? <Debt>[];
+    final isBalanceHidden = privacy.value?.isLocked ?? false;
+    if (businessId != null) {
+      ref.listen(dueDebtsProvider(businessId), (previous, next) {
+        final items = next.value;
+        if (items == null) return;
+        final fresh = items
+            .where((debt) => !_notifiedDueDebtIds.contains(debt.id))
+            .toList(growable: false);
+        if (fresh.isEmpty) return;
+        _notifiedDueDebtIds.addAll(fresh.map((debt) => debt.id));
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final names = fresh
+              .take(2)
+              .map((debt) => debt.contactName)
+              .join(', ');
+          final more = fresh.length > 2
+              ? ' dan ${fresh.length - 2} lainnya'
+              : '';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(
+                    Icons.notifications_active_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text('Pengingat: $names$more sudah jatuh tempo.'),
+                  ),
+                ],
+              ),
+              action: SnackBarAction(
+                label: 'Lihat',
+                onPressed: () => context.go(AppRoutes.debts),
+              ),
+            ),
+          );
+        });
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -123,7 +282,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${AppDateFormat.greeting(DateTime.now())}, ${user?.firstName ?? 'Pengguna'}',
+              '${AppDateFormat.greeting(DateTime.now())} ${AppDateFormat.greetingEmoji(DateTime.now())}, ${user?.displayName ?? 'Pengguna'}',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             Text(
@@ -133,6 +292,15 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           ],
         ),
         actions: [
+          IconButton(
+            onPressed: () => _showDebtReminders(dueSoonList),
+            tooltip: 'Pengingat jatuh tempo',
+            icon: Badge(
+              isLabelVisible: dueDebtList.isNotEmpty,
+              label: Text('${dueDebtList.length}'),
+              child: const Icon(Icons.notifications_outlined),
+            ),
+          ),
           IconButton(
             onPressed: () => context.push(AppRoutes.reports),
             tooltip: 'Laporan keuangan',
@@ -222,12 +390,18 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       ],
                       _BalanceCard(
                         balance: data.cashBalance,
-                        isHidden: _hideBalance,
+                        isHidden: isBalanceHidden,
+                        hasPin: privacy.value?.hasPin ?? false,
                         isSyncing: _isSyncing,
-                        onToggleVisibility: () {
-                          setState(() => _hideBalance = !_hideBalance);
-                        },
+                        onToggleLock: _toggleBalanceLock,
                       ),
+                      if (dueDebtList.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.lg),
+                        _DueReminderBanner(
+                          debts: dueDebtList,
+                          onTap: () => _showDebtReminders(dueSoonList),
+                        ),
+                      ],
                       const SizedBox(height: AppSpacing.xl),
                       _PeriodSelector(
                         selected: period,
@@ -247,6 +421,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                               icon: Icons.south_west_rounded,
                               color: AppColors.success,
                               softColor: AppColors.successSoft,
+                              isHidden: isBalanceHidden,
                             ),
                           ),
                           const SizedBox(width: AppSpacing.md),
@@ -257,12 +432,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                               icon: Icons.north_east_rounded,
                               color: AppColors.danger,
                               softColor: AppColors.dangerSoft,
+                              isHidden: isBalanceHidden,
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: AppSpacing.md),
-                      _ProfitLossCard(data: data),
+                      _ProfitLossCard(data: data, isHidden: isBalanceHidden),
                       const SizedBox(height: AppSpacing.xl),
                       _ChartCard(data: data),
                       const SizedBox(height: AppSpacing.xl),
@@ -292,6 +468,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       const SizedBox(height: AppSpacing.xl),
                       _RecentTransactions(
                         transactions: data.recentTransactions,
+                        hideAmounts: isBalanceHidden,
                         onAdd: _openNewTransaction,
                         onTap: _openEditTransaction,
                       ),
@@ -305,20 +482,126 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       ),
     );
   }
+
+  Future<void> _toggleBalanceLock() async {
+    final controller = ref.read(balancePrivacyProvider.notifier);
+    final privacy = ref.read(balancePrivacyProvider).value;
+    if (privacy == null) return;
+    if (privacy.isLocked) {
+      if (!privacy.hasPin) {
+        final result = await BalancePinDialog.show(context, isCreating: true);
+        if (result?.pin != null) {
+          await controller.createPinAndUnlock(result!.pin!);
+        }
+        return;
+      }
+      final result = await BalancePinDialog.show(context, isCreating: false);
+      if (result?.forgot == true) {
+        await controller.clearPinAndUnlock();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('PIN dihapus. Saldo bisa dilihat tanpa kunci.'),
+            ),
+          );
+        }
+        return;
+      }
+      if (result?.pin != null) {
+        final valid = await controller.unlockWithPin(result!.pin!);
+        if (!valid && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('PIN salah. Coba lagi.')),
+          );
+        }
+      }
+      return;
+    }
+    if (!privacy.hasPin) {
+      final result = await BalancePinDialog.show(context, isCreating: true);
+      if (result?.pin != null) {
+        await controller.createPinAndUnlock(result!.pin!);
+        await controller.lock();
+      }
+      return;
+    }
+    await controller.lock();
+  }
+
+  Future<void> _showDebtReminders(List<Debt> debts) async {
+    if (debts.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Belum ada janji jatuh tempo terdekat.')),
+      );
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xl,
+          AppSpacing.sm,
+          AppSpacing.xl,
+          AppSpacing.xl,
+        ),
+        children: [
+          Text(
+            'Pengingat jatuh tempo',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          for (final debt in debts)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(
+                backgroundColor: debt.type == DebtType.receivable
+                    ? AppColors.successSoft
+                    : AppColors.dangerSoft,
+                child: Icon(
+                  debt.type == DebtType.receivable
+                      ? Icons.call_received_rounded
+                      : Icons.call_made_rounded,
+                  color: debt.type == DebtType.receivable
+                      ? AppColors.success
+                      : AppColors.danger,
+                ),
+              ),
+              title: Text(debt.contactName),
+              subtitle: Text(
+                '${debt.type == DebtType.receivable ? "Piutang" : "Utang"} • Jatuh tempo ${debt.dueDate.day}/${debt.dueDate.month}/${debt.dueDate.year}',
+              ),
+              trailing: Text(
+                CurrencyFormatter.format(debt.remainingAmount),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                context.go('/debts/${debt.id}');
+              },
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class _BalanceCard extends StatelessWidget {
   const _BalanceCard({
     required this.balance,
     required this.isHidden,
+    required this.hasPin,
     required this.isSyncing,
-    required this.onToggleVisibility,
+    required this.onToggleLock,
   });
 
   final int balance;
   final bool isHidden;
+  final bool hasPin;
   final bool isSyncing;
-  final VoidCallback onToggleVisibility;
+  final VoidCallback onToggleLock;
 
   @override
   Widget build(BuildContext context) {
@@ -388,16 +671,48 @@ class _BalanceCard extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(AppRadius.full),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isHidden
+                                  ? Icons.lock_rounded
+                                  : Icons.lock_open_rounded,
+                              size: 12,
+                              color: Colors.white.withValues(alpha: 0.86),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              isHidden ? 'Terkunci' : 'Terbuka',
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.86),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
                       IconButton(
-                        onPressed: onToggleVisibility,
+                        onPressed: onToggleLock,
                         tooltip: isHidden
-                            ? 'Tampilkan saldo'
-                            : 'Sembunyikan saldo',
+                            ? 'Buka kunci saldo'
+                            : 'Kunci saldo dengan PIN',
                         icon: Icon(
                           isHidden
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                          color: Colors.white.withValues(alpha: 0.86),
+                              ? Icons.lock_rounded
+                              : Icons.lock_open_rounded,
+                          color: Colors.white.withValues(alpha: 0.9),
                         ),
                       ),
                     ],
@@ -423,6 +738,8 @@ class _BalanceCard extends StatelessWidget {
                       Icon(
                         isSyncing
                             ? Icons.cloud_sync_rounded
+                            : isHidden
+                            ? Icons.shield_rounded
                             : Icons.verified_user_outlined,
                         size: 14,
                         color: Colors.white.withValues(alpha: 0.7),
@@ -432,6 +749,10 @@ class _BalanceCard extends StatelessWidget {
                         child: Text(
                           isSyncing
                               ? 'Menyinkronkan transaksi...'
+                              : isHidden
+                              ? 'Saldo terkunci. Ketuk ikon kunci untuk membuka.'
+                              : hasPin
+                              ? 'Saldo dilindungi PIN pribadi'
                               : 'Saldo dari seluruh transaksi usaha',
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(
@@ -446,6 +767,65 @@ class _BalanceCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _DueReminderBanner extends StatelessWidget {
+  const _DueReminderBanner({required this.debts, required this.onTap});
+
+  final List<Debt> debts;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final names = debts.take(2).map((debt) => debt.contactName).join(', ');
+    final more = debts.length > 2 ? ' +${debts.length - 2} lainnya' : '';
+    return AppCard(
+      onTap: onTap,
+      showShadow: false,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      borderColor: AppColors.warning.withValues(alpha: 0.35),
+      backgroundColor: AppColors.warningSoft.withValues(alpha: 0.55),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AppColors.warning.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: const Icon(
+              Icons.notifications_active_rounded,
+              color: AppColors.warning,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${debts.length} janji sudah jatuh tempo',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$names$more. Ketuk untuk lihat detail.',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.warning),
+        ],
       ),
     );
   }
@@ -508,6 +888,7 @@ class _SummaryCard extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.softColor,
+    required this.isHidden,
   });
 
   final String label;
@@ -515,6 +896,7 @@ class _SummaryCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final Color softColor;
+  final bool isHidden;
 
   @override
   Widget build(BuildContext context) {
@@ -540,7 +922,7 @@ class _SummaryCard extends StatelessWidget {
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
-              CurrencyFormatter.format(amount),
+              isHidden ? 'Rp ••••••' : CurrencyFormatter.format(amount),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: color,
                 fontWeight: FontWeight.w700,
@@ -554,9 +936,10 @@ class _SummaryCard extends StatelessWidget {
 }
 
 class _ProfitLossCard extends StatelessWidget {
-  const _ProfitLossCard({required this.data});
+  const _ProfitLossCard({required this.data, required this.isHidden});
 
   final DashboardData data;
+  final bool isHidden;
 
   @override
   Widget build(BuildContext context) {
@@ -603,7 +986,9 @@ class _ProfitLossCard extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.sm),
           Text(
-            CurrencyFormatter.format(data.summary.net.abs()),
+            isHidden
+                ? 'Rp ••••••'
+                : CurrencyFormatter.format(data.summary.net.abs()),
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               color: color,
               fontWeight: FontWeight.w700,
@@ -743,11 +1128,13 @@ class _LegendDot extends StatelessWidget {
 class _RecentTransactions extends StatelessWidget {
   const _RecentTransactions({
     required this.transactions,
+    required this.hideAmounts,
     required this.onAdd,
     required this.onTap,
   });
 
   final List<MoneyTransaction> transactions;
+  final bool hideAmounts;
   final VoidCallback onAdd;
   final ValueChanged<MoneyTransaction> onTap;
 
@@ -809,6 +1196,7 @@ class _RecentTransactions extends StatelessWidget {
               if (index > 0) const Divider(indent: AppSpacing.xl),
               TransactionTile(
                 transaction: transactions[index],
+                hideAmount: hideAmounts,
                 onTap: () => onTap(transactions[index]),
               ),
             ],

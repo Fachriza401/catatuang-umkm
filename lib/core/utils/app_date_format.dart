@@ -49,4 +49,11 @@ abstract final class AppDateFormat {
     if (now.hour < 18) return 'Selamat sore';
     return 'Selamat malam';
   }
+
+  static String greetingEmoji(DateTime now) {
+    if (now.hour < 11) return '🌅';
+    if (now.hour < 15) return '☀️';
+    if (now.hour < 18) return '🌇';
+    return '🌙';
+  }
 }

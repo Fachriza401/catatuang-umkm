@@ -37,6 +37,7 @@ Pastikan urutan eksekusi:
 2. `supabase/migrations/20261031010000_debts_and_payments.sql`
 3. `supabase/migrations/20261101000000_transaction_sync_rpc.sql`
 4. `supabase/migrations/20261101020000_business_security_and_plans.sql`
+5. `supabase/migrations/20261101030000_subscription_payments.sql`
 
 ## 3) Konfigurasi aplikasi production
 
@@ -52,6 +53,35 @@ Untuk Edge Function, set secret yang dibutuhkan melalui Supabase CLI atau dashbo
 ```bash
 supabase secrets set SUPABASE_SERVICE_ROLE_KEY=<secret>
 ```
+
+## 3.1) Midtrans Snap
+
+Deploy fungsi checkout dan webhook:
+
+```bash
+supabase functions deploy create-subscription-checkout
+supabase functions deploy midtrans-webhook --no-verify-jwt
+```
+
+Atur secret berikut di Supabase, bukan di Flutter atau Git:
+
+```bash
+supabase secrets set MIDTRANS_SERVER_KEY=<server-key>
+supabase secrets set MIDTRANS_IS_PRODUCTION=false
+```
+
+Di dashboard Midtrans (Sandbox untuk uji, Production untuk rilis):
+
+1. Set **Payment Notification URL** ke
+   `https://<project-ref>.supabase.co/functions/v1/midtrans-webhook`.
+2. Pastikan metode pembayaran yang diinginkan aktif (QRIS, e-wallet, VA).
+3. Untuk production, ganti `MIDTRANS_IS_PRODUCTION` menjadi `true` dan pakai
+   server key production.
+
+Harga Premium dan Business diatur di `business_plans.price_amount` dan
+`billing_period_days` pada migration. Ubah lewat SQL/service role, bukan dari
+client. `apply_payment_notification` hanya dapat dipanggil `service_role` dan
+menjaga agar notifikasi ganda tidak memperpanjang langganan dua kali.
 
 ## 4) RLS dan security checklist
 
@@ -91,6 +121,8 @@ Biarkan `{{ .ConfirmationURL }}` tetap ada jika tautan juga ingin dipertahankan.
 - [ ] RLS gagal saat cross-tenant
 - [ ] upload attachment berhasil dengan signed URL
 - [ ] delete-account utility berjalan aman
+- [ ] checkout Midtrans membuat order dan mengarah ke halaman pembayaran
+- [ ] webhook settlement mengaktifkan paket dan notifikasi ganda diabaikan
 
 ## 7) Pengingat keamanan
 

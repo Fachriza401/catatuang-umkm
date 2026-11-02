@@ -14,16 +14,24 @@ import '../../../transactions/presentation/utils/transaction_ui.dart';
 import '../../../transactions/presentation/providers/transaction_providers.dart';
 
 class TransactionTile extends ConsumerWidget {
-  const TransactionTile({super.key, required this.transaction, this.onTap});
+  const TransactionTile({
+    super.key,
+    required this.transaction,
+    this.onTap,
+    this.hideAmount = false,
+  });
 
   final MoneyTransaction transaction;
   final VoidCallback? onTap;
+  final bool hideAmount;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final category = TransactionCategory.byId(transaction.categoryId) ??
+    final category =
+        TransactionCategory.byId(transaction.categoryId) ??
         TransactionCategory.fallbackFor(transaction.type);
-    final payment = PaymentMethod.byId(transaction.paymentMethodId) ??
+    final payment =
+        PaymentMethod.byId(transaction.paymentMethodId) ??
         PaymentMethod.fallback;
     final isIncome = transaction.isIncome;
     final accent = isIncome ? AppColors.success : AppColors.danger;
@@ -44,8 +52,7 @@ class TransactionTile extends ConsumerWidget {
       TransactionSyncStatus.syncing => AppColors.info,
       TransactionSyncStatus.synced => AppColors.success,
       TransactionSyncStatus.failed ||
-      TransactionSyncStatus.conflict =>
-        AppColors.danger,
+      TransactionSyncStatus.conflict => AppColors.danger,
     };
     final statusIcon = switch (syncStatus) {
       TransactionSyncStatus.pending => Icons.cloud_upload_outlined,
@@ -119,9 +126,7 @@ class TransactionTile extends ConsumerWidget {
                         const SizedBox(width: 3),
                         Text(
                           payment.label,
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelSmall
+                          style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(color: AppColors.textMuted),
                         ),
                         const SizedBox(width: AppSpacing.sm),
@@ -132,9 +137,7 @@ class TransactionTile extends ConsumerWidget {
                             statusLabel,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
+                            style: Theme.of(context).textTheme.labelSmall
                                 ?.copyWith(color: statusColor),
                           ),
                         ),
@@ -152,11 +155,13 @@ class TransactionTile extends ConsumerWidget {
                 ),
               const SizedBox(width: AppSpacing.sm),
               Text(
-                '${isIncome ? '+' : '-'}${CurrencyFormatter.format(transaction.amount)}',
+                hideAmount
+                    ? '${isIncome ? '+' : '-'}Rp ••••••'
+                    : '${isIncome ? '+' : '-'}${CurrencyFormatter.format(transaction.amount)}',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: accent,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  color: accent,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),

@@ -1,2 +1,8 @@
 [functions.delete-account]
 verify_jwt = true
+
+[functions.create-subscription-checkout]
+verify_jwt = true
+
+[functions.midtrans-webhook]
+verify_jwt = false

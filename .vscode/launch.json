@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "CatatUang (Debug)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "--dart-define=SUPABASE_URL=https://iyfnarwxhnmbflwrgbhq.supabase.co",
+        "--dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_iHLfWqN6Y64Fj7HKaxpxeQ_F8F2N7h6"
+      ]
+    },
+    {
+      "name": "CatatUang (Profile)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "profile",
+      "args": [
+        "--dart-define=SUPABASE_URL=https://iyfnarwxhnmbflwrgbhq.supabase.co",
+        "--dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_iHLfWqN6Y64Fj7HKaxpxeQ_F8F2N7h6"
+      ]
+    },
+    {
+      "name": "CatatUang (Release)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "release",
+      "args": [
+        "--dart-define=SUPABASE_URL=https://iyfnarwxhnmbflwrgbhq.supabase.co",
+        "--dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_iHLfWqN6Y64Fj7HKaxpxeQ_F8F2N7h6"
+      ]
+    }
+  ]
+}
+

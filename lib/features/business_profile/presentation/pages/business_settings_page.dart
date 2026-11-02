@@ -120,8 +120,6 @@ class _BusinessSettingsPageState extends ConsumerState<BusinessSettingsPage> {
                 const SizedBox(height: AppSpacing.xl),
                 _BusinessMembersSection(access: access),
                 const SizedBox(height: AppSpacing.xl),
-                _PlanSummary(access: access),
-                const SizedBox(height: AppSpacing.xl),
                 _SettingsSection(
                   title: 'Keamanan akun',
                   subtitle: 'Email, password, dan penghapusan akun',
@@ -302,9 +300,6 @@ class _BusinessHeroCard extends StatelessWidget {
       businessType,
     ].where((value) => value.isNotEmpty).join(' • ');
     final displayName = businessName.isEmpty ? 'Profil usaha' : businessName;
-    final transactionValue = access.monthlyTransactionLimit == null
-        ? '${access.transactionsUsed}'
-        : '${access.transactionsUsed}/${access.monthlyTransactionLimit}';
 
     return Container(
       decoration: BoxDecoration(
@@ -391,8 +386,6 @@ class _BusinessHeroCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.sm),
-                      _HeroPlanBadge(plan: access.plan),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.xl),
@@ -403,27 +396,25 @@ class _BusinessHeroCard extends StatelessWidget {
                   const SizedBox(height: AppSpacing.lg),
                   Row(
                     children: [
-                      Expanded(
+                       Expanded(
                         child: _HeroStat(
                           icon: Icons.people_alt_outlined,
                           label: 'Anggota',
-                          value: '${access.membersUsed}/${access.maxMembers}',
+                          value: '${access.membersUsed}',
                         ),
                       ),
                       Expanded(
                         child: _HeroStat(
                           icon: Icons.receipt_long_outlined,
                           label: 'Transaksi',
-                          value: transactionValue,
+                          value: '${access.transactionsUsed}',
                         ),
                       ),
                       Expanded(
                         child: _HeroStat(
                           icon: Icons.image_outlined,
                           label: 'Bukti',
-                          value: access.attachmentsEnabled
-                              ? 'Aktif'
-                              : 'Tidak aktif',
+                          value: 'Aktif',
                         ),
                       ),
                     ],
@@ -452,44 +443,6 @@ class _GlowCircle extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: opacity),
         shape: BoxShape.circle,
-      ),
-    );
-  }
-}
-
-class _HeroPlanBadge extends StatelessWidget {
-  const _HeroPlanBadge({required this.plan});
-
-  final String plan;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(AppRadius.full),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.workspace_premium_rounded,
-            color: Colors.white,
-            size: 14,
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          Text(
-            _planLabel(plan),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -841,12 +794,6 @@ class _BusinessMembersSection extends ConsumerWidget {
             )
           : null,
       children: [
-        _UsageMeter(
-          label: 'Anggota terpakai',
-          used: access.membersUsed,
-          limit: access.maxMembers,
-          color: AppColors.info,
-        ),
         members.when(
           loading: () => const LinearProgressIndicator(),
           error: (error, stackTrace) => Text('Anggota gagal dimuat: $error'),
@@ -1125,200 +1072,6 @@ class _RoleChip extends StatelessWidget {
     'cashier' => 'Kasir',
     _ => 'Viewer',
   };
-}
-
-class _PlanSummary extends StatelessWidget {
-  const _PlanSummary({required this.access});
-
-  final BusinessAccess access;
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = switch (access.plan) {
-      'premium' => AppColors.warning,
-      'business' => AppColors.success,
-      _ => AppColors.primary,
-    };
-    final accentSoft = switch (access.plan) {
-      'premium' => AppColors.warningSoft,
-      'business' => AppColors.successSoft,
-      _ => AppColors.primarySoft,
-    };
-    return _SettingsSection(
-      title: 'Paket & penggunaan',
-      subtitle: 'Kuota dan fitur yang aktif untuk usaha ini',
-      icon: Icons.workspace_premium_outlined,
-      tone: accent,
-      toneSoft: accentSoft,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          decoration: BoxDecoration(
-            color: accentSoft,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: accent.withValues(alpha: 0.20)),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.workspace_premium_rounded, color: accent, size: 22),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Paket ${_planLabel(access.plan)}',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: accent,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xxs),
-                    Text(
-                      'Status langganan: ${_statusLabel(access.subscriptionStatus)}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        _UsageMeter(
-          label: 'Transaksi bulan ini',
-          used: access.transactionsUsed,
-          limit: access.monthlyTransactionLimit,
-          color: AppColors.success,
-        ),
-        _UsageMeter(
-          label: 'Anggota usaha',
-          used: access.membersUsed,
-          limit: access.maxMembers,
-          color: AppColors.info,
-        ),
-        _FeatureRow(
-          icon: Icons.image_outlined,
-          label: 'Bukti transaksi privat',
-          enabled: access.attachmentsEnabled,
-        ),
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceMuted,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          child: Text(
-            'Free: 1 akun, 200 transaksi/bulan. Premium: 5 akun, 5.000 '
-            'transaksi/bulan. Business: 25 akun dan transaksi tanpa batas. '
-            'Premium dan Business mencakup bukti transaksi privat.',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-String _planLabel(String plan) => switch (plan) {
-  'premium' => 'Premium',
-  'business' => 'Business',
-  _ => 'Free',
-};
-
-String _statusLabel(String status) => switch (status) {
-  'active' => 'Aktif',
-  'trialing' => 'Masa uji',
-  'past_due' => 'Menunggu pembayaran',
-  'canceled' => 'Dibatalkan',
-  'offline' => 'Mode offline',
-  _ => status,
-};
-
-class _UsageMeter extends StatelessWidget {
-  const _UsageMeter({
-    required this.label,
-    required this.used,
-    required this.limit,
-    required this.color,
-  });
-
-  final String label;
-  final int used;
-  final int? limit;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final hasLimit = limit != null && limit! > 0;
-    final ratio = hasLimit ? (used / limit!).clamp(0.0, 1.0).toDouble() : 1.0;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(label, style: Theme.of(context).textTheme.bodySmall),
-            ),
-            Text(
-              hasLimit ? '$used / $limit' : '$used / tanpa batas',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadius.full),
-          child: LinearProgressIndicator(
-            value: ratio,
-            minHeight: 8,
-            backgroundColor: AppColors.surfaceMuted,
-            color: color,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _FeatureRow extends StatelessWidget {
-  const _FeatureRow({
-    required this.icon,
-    required this.label,
-    required this.enabled,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: AppColors.textSecondary),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Text(label, style: Theme.of(context).textTheme.bodySmall),
-        ),
-        Icon(
-          enabled ? Icons.check_circle_rounded : Icons.remove_circle_outline,
-          size: 18,
-          color: enabled ? AppColors.success : AppColors.textMuted,
-        ),
-        const SizedBox(width: AppSpacing.xs),
-        Text(
-          enabled ? 'Aktif' : 'Tidak termasuk',
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: enabled ? AppColors.success : AppColors.textMuted,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 class _DangerZone extends StatelessWidget {

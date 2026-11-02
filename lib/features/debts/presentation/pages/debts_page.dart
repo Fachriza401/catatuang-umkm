@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_radius.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/widgets/app_card.dart';
@@ -14,6 +15,7 @@ import '../../../business_profile/presentation/providers/business_access_provide
 import '../../domain/entities/debt.dart';
 import '../../domain/entities/debt_type.dart';
 import '../providers/debt_providers.dart';
+import '../providers/debt_reminder_providers.dart';
 
 class DebtsPage extends ConsumerStatefulWidget {
   const DebtsPage({super.key});
@@ -68,6 +70,7 @@ class _DebtsPageState extends ConsumerState<DebtsPage> {
     }
     final businessId = access.businessId;
     final debtsAsync = ref.watch(debtsProvider(businessId));
+    ref.watch(debtReminderTickProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -110,11 +113,21 @@ class _DebtsPageState extends ConsumerState<DebtsPage> {
           ),
         ),
         data: (debts) {
-          final visibleDebts = debts
+          final now = DateTime.now();
+          final filtered = debts
               .where(
                 (debt) => _selectedType == null || debt.type == _selectedType,
               )
-              .toList(growable: false);
+              .toList(growable: true);
+          filtered.sort((a, b) {
+            final aOverdue = isDebtDue(a, now: now) && a.remainingAmount > 0;
+            final bOverdue = isDebtDue(b, now: now) && b.remainingAmount > 0;
+            if (aOverdue != bOverdue) {
+              return aOverdue ? -1 : 1;
+            }
+            return a.dueDate.compareTo(b.dueDate);
+          });
+          final visibleDebts = filtered;
           final totalReceivable = debts
               .where((debt) => debt.type == DebtType.receivable)
               .fold<int>(0, (total, debt) => total + debt.remainingAmount);
@@ -206,6 +219,39 @@ class _DebtsPageState extends ConsumerState<DebtsPage> {
   }
 }
 
+class _DueBadge extends StatelessWidget {
+  const _DueBadge({
+    required this.label,
+    required this.color,
+    required this.softColor,
+  });
+
+  final String label;
+  final Color color;
+  final Color softColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 2,
+      ),
+      decoration: BoxDecoration(
+        color: softColor,
+        borderRadius: BorderRadius.circular(AppRadius.full),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
 class _TotalCard extends StatelessWidget {
   const _TotalCard({
     required this.label,
@@ -258,9 +304,16 @@ class _DebtTile extends StatelessWidget {
     final color = debt.type == DebtType.receivable
         ? AppColors.success
         : AppColors.danger;
+    final overdue = isDebtDue(debt);
+    final dueSoon = !overdue && isDebtDueSoon(debt);
     return AppCard(
       onTap: onTap,
       padding: const EdgeInsets.all(AppSpacing.lg),
+      borderColor: overdue
+          ? AppColors.danger.withValues(alpha: 0.45)
+          : dueSoon
+          ? AppColors.warning.withValues(alpha: 0.45)
+          : AppColors.border,
       child: Column(
         children: [
           Row(
@@ -289,6 +342,18 @@ class _DebtTile extends StatelessWidget {
                       '${debt.type.label} · Jatuh tempo ${_date(debt.dueDate)}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
+                    if (overdue || dueSoon) ...[
+                      const SizedBox(height: 4),
+                      _DueBadge(
+                        label: overdue
+                            ? 'Terlambat ${overdueDays(debt)} hari'
+                            : 'Jatuh tempo dalam ${debt.dueDate.difference(dateOnly(DateTime.now())).inDays} hari',
+                        color: overdue ? AppColors.danger : AppColors.warning,
+                        softColor: overdue
+                            ? AppColors.dangerSoft
+                            : AppColors.warningSoft,
+                      ),
+                    ],
                   ],
                 ),
               ),

@@ -17,13 +17,14 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   bool get isPasswordRecovery => _isPasswordRecovery;
 
-  SupabaseClient get _client {
+  Future<SupabaseClient> _ensureClient() async {
     if (!_supabaseService.isConfigured) {
       throw const ConfigurationFailure(
         'Supabase belum dikonfigurasi. Jalankan aplikasi dengan SUPABASE_URL '
         'dan SUPABASE_PUBLISHABLE_KEY.',
       );
     }
+    await _supabaseService.ensureInitialized();
     final client = _supabaseService.client;
     if (client == null) {
       throw const ConfigurationFailure(
@@ -61,7 +62,8 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
   }) async {
     try {
-      final response = await _client.auth.signInWithPassword(
+      final client = await _ensureClient();
+      final response = await client.auth.signInWithPassword(
         email: email.trim(),
         password: password,
       );
@@ -86,7 +88,8 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
   }) async {
     try {
-      final response = await _client.auth.signUp(
+      final client = await _ensureClient();
+      final response = await client.auth.signUp(
         email: email.trim(),
         password: password,
         emailRedirectTo: AppConfig.authRedirectUrl,
@@ -115,7 +118,8 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> signOut() async {
     try {
-      await _client.auth.signOut();
+      final client = await _ensureClient();
+      await client.auth.signOut();
     } on AuthException catch (error) {
       throw _mapAuthException(error);
     } catch (error) {
@@ -126,7 +130,8 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> sendPasswordResetEmail(String email) async {
     try {
-      await _client.auth.resetPasswordForEmail(
+      final client = await _ensureClient();
+      await client.auth.resetPasswordForEmail(
         email.trim(),
         redirectTo: AppConfig.authRedirectUrl,
       );
@@ -140,7 +145,8 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> updatePassword(String password) async {
     try {
-      await _client.auth.updateUser(UserAttributes(password: password));
+      final client = await _ensureClient();
+      await client.auth.updateUser(UserAttributes(password: password));
       _isPasswordRecovery = false;
     } on AuthException catch (error) {
       throw _mapAuthException(error);
@@ -152,7 +158,8 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> resendVerificationEmail(String email) async {
     try {
-      await _client.auth.resend(
+      final client = await _ensureClient();
+      await client.auth.resend(
         email: email.trim(),
         type: OtpType.signup,
         emailRedirectTo: AppConfig.authRedirectUrl,
@@ -170,7 +177,8 @@ class AuthRepositoryImpl implements AuthRepository {
     required String token,
   }) async {
     try {
-      final response = await _client.auth.verifyOTP(
+      final client = await _ensureClient();
+      final response = await client.auth.verifyOTP(
         email: email.trim(),
         token: token.trim(),
         type: OtpType.signup,
@@ -192,13 +200,14 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<AppUser?> refreshSession() async {
     try {
-      final session = _client.auth.currentSession;
+      final client = await _ensureClient();
+      final session = client.auth.currentSession;
       final refreshToken = session?.refreshToken;
       if (session == null || refreshToken == null || refreshToken.isEmpty) {
-        return AppUserMapper.fromNullableSupabase(_client.auth.currentUser);
+        return AppUserMapper.fromNullableSupabase(client.auth.currentUser);
       }
 
-      final response = await _client.auth.refreshSession();
+      final response = await client.auth.refreshSession();
       return AppUserMapper.fromNullableSupabase(
         response.user ?? response.session?.user,
       );

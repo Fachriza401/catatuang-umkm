@@ -363,13 +363,6 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
   Widget build(BuildContext context) {
     final title = widget.isEditing ? 'Edit Transaksi' : 'Tambah ${_type.label}';
     final isBusy = _isSaving || _isDeleting;
-    final canUseAttachments = ref
-        .watch(businessAccessProvider)
-        .when(
-          data: (access) => access?.attachmentsEnabled ?? false,
-          loading: () => false,
-          error: (_, _) => false,
-        );
 
     return Scaffold(
       appBar: AppBar(
@@ -538,26 +531,20 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                             textCapitalization: TextCapitalization.sentences,
                           ),
                           const SizedBox(height: AppSpacing.xl),
-                          if (canUseAttachments) ...[
-                            Text(
-                              'Bukti Transaksi (opsional)',
-                              style: Theme.of(context).textTheme.titleSmall,
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                            _AttachmentPicker(
-                              localPath:
-                                  _pickedAttachmentPath ??
-                                  _existingAttachmentPath,
-                              remoteUrl: _existingAttachmentUrl,
-                              enabled: !isBusy,
-                              onPick: _pickAttachment,
-                              onRemove: _removeAttachment,
-                            ),
-                          ] else
-                            Text(
-                              'Bukti transaksi tersedia pada paket Premium dan Business.',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
+                          Text(
+                            'Bukti Transaksi (opsional)',
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          _AttachmentPicker(
+                            localPath:
+                                _pickedAttachmentPath ??
+                                _existingAttachmentPath,
+                            remoteUrl: _existingAttachmentUrl,
+                            enabled: !isBusy,
+                            onPick: _pickAttachment,
+                            onRemove: _removeAttachment,
+                          ),
                           const SizedBox(height: AppSpacing.xxl),
                           AppButton(
                             label: widget.isEditing

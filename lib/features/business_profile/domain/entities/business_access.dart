@@ -2,13 +2,13 @@ class BusinessAccess {
   const BusinessAccess({
     required this.businessId,
     required this.role,
-    required this.plan,
-    required this.subscriptionStatus,
-    required this.membersUsed,
-    required this.maxMembers,
-    required this.transactionsUsed,
+    this.plan = 'free',
+    this.subscriptionStatus = 'active',
+    this.membersUsed = 1,
+    this.maxMembers = 100,
+    this.transactionsUsed = 0,
     this.monthlyTransactionLimit,
-    required this.attachmentsEnabled,
+    this.attachmentsEnabled = true,
   });
 
   final String businessId;
@@ -30,14 +30,14 @@ class BusinessAccess {
   factory BusinessAccess.fromJson(Map<String, dynamic> json) {
     return BusinessAccess(
       businessId: json['business_id'] as String,
-      role: json['role'] as String? ?? 'viewer',
+      role: json['role'] as String? ?? 'owner',
       plan: json['plan'] as String? ?? 'free',
       subscriptionStatus: json['subscription_status'] as String? ?? 'active',
       membersUsed: json['members_used'] as int? ?? 1,
-      maxMembers: json['max_members'] as int? ?? 1,
+      maxMembers: json['max_members'] as int? ?? 100,
       transactionsUsed: json['transactions_used'] as int? ?? 0,
-      monthlyTransactionLimit: json['monthly_transaction_limit'] as int?,
-      attachmentsEnabled: json['attachments_enabled'] as bool? ?? false,
+      monthlyTransactionLimit: null,
+      attachmentsEnabled: json['attachments_enabled'] as bool? ?? true,
     );
   }
 
@@ -49,7 +49,7 @@ class BusinessAccess {
         'members_used': membersUsed,
         'max_members': maxMembers,
         'transactions_used': transactionsUsed,
-        'monthly_transaction_limit': monthlyTransactionLimit,
+        'monthly_transaction_limit': null,
         'attachments_enabled': attachmentsEnabled,
       };
 
@@ -58,12 +58,12 @@ class BusinessAccess {
       businessId: userId,
       role: 'owner',
       plan: 'free',
-      subscriptionStatus: 'offline',
+      subscriptionStatus: 'active',
       membersUsed: 1,
-      maxMembers: 1,
+      maxMembers: 100,
       transactionsUsed: 0,
-      monthlyTransactionLimit: 200,
-      attachmentsEnabled: false,
+      monthlyTransactionLimit: null,
+      attachmentsEnabled: true,
     );
   }
 }

@@ -17,6 +17,12 @@ class AppUser {
     return name.split(RegExp(r'\s+')).first;
   }
 
+  String get displayName {
+    final name = fullName.trim();
+    if (name.isEmpty) return 'Pengguna';
+    return name;
+  }
+
   String get initials {
     final parts = fullName
         .trim()

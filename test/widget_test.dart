@@ -7,6 +7,8 @@ import 'package:catat_uang/features/auth/presentation/providers/auth_providers.d
 import 'package:catat_uang/features/business_profile/domain/entities/business_access.dart';
 import 'package:catat_uang/features/business_profile/presentation/providers/business_access_provider.dart';
 import 'package:catat_uang/features/dashboard/presentation/pages/dashboard_page.dart';
+import 'package:catat_uang/features/debts/domain/entities/debt.dart';
+import 'package:catat_uang/features/debts/presentation/providers/debt_reminder_providers.dart';
 import 'package:catat_uang/features/transactions/domain/entities/money_transaction.dart';
 import 'package:catat_uang/features/transactions/domain/entities/transaction_draft.dart';
 import 'package:catat_uang/features/transactions/domain/entities/transaction_type.dart';
@@ -61,6 +63,12 @@ void main() {
             (ref) async => BusinessAccess.ownerFallback('user-1'),
           ),
           transactionRepositoryProvider.overrideWithValue(repository),
+          dueDebtsProvider.overrideWith(
+            (ref, businessId) => const AsyncValue<List<Debt>>.data(<Debt>[]),
+          ),
+          dueSoonDebtsProvider.overrideWith(
+            (ref, businessId) => const AsyncValue<List<Debt>>.data(<Debt>[]),
+          ),
         ],
         child: MaterialApp(theme: AppTheme.light, home: const DashboardPage()),
       ),
@@ -115,7 +123,7 @@ MoneyTransaction _transaction({
 
 class _FakeTransactionRepository implements TransactionRepository {
   _FakeTransactionRepository(List<MoneyTransaction> initial)
-      : _transactions = List.of(initial);
+    : _transactions = List.of(initial);
 
   final _controller = StreamController<List<MoneyTransaction>>.broadcast();
   List<MoneyTransaction> _transactions;
