@@ -1,0 +1,269 @@
+{
+  "info": {
+    "_postman_id": "c1f7a012-3456-4789-9abc-def012345678",
+    "name": "CatatUang Web Dashboard API",
+    "description": "Koleksi API Postman untuk integrasi Web Dasbor CatatUang dengan backend Supabase.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "SUPABASE_URL",
+      "value": "https://your-project.supabase.co",
+      "type": "string"
+    },
+    {
+      "key": "ANON_KEY",
+      "value": "your-anon-key-here",
+      "type": "string"
+    },
+    {
+      "key": "ACCESS_TOKEN",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "BUSINESS_ID",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01. Auth",
+      "item": [
+        {
+          "name": "Login Email & Password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.access_token) {",
+                  "    pm.collectionVariables.set('ACCESS_TOKEN', jsonData.access_token);",
+                  "    pm.collectionVariables.set('BUSINESS_ID', jsonData.user.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{ANON_KEY}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"owner@warung.com\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{SUPABASE_URL}}/auth/v1/token?grant_type=password",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["auth", "v1", "token"],
+              "query": [{ "key": "grant_type", "value": "password" }]
+            }
+          }
+        },
+        {
+          "name": "Register Akun Baru",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{ANON_KEY}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"baru@warung.com\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{SUPABASE_URL}}/auth/v1/signup",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["auth", "v1", "signup"]
+            }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{ANON_KEY}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"owner@warung.com\"\n}"
+            },
+            "url": {
+              "raw": "{{SUPABASE_URL}}/auth/v1/recover",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["auth", "v1", "recover"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Business & Permissions",
+      "item": [
+        {
+          "name": "Get My Business Access (RPC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{ANON_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{SUPABASE_URL}}/rest/v1/rpc/get_my_business_access",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["rest", "v1", "rpc", "get_my_business_access"]
+            }
+          }
+        },
+        {
+          "name": "Get Business Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{ANON_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+            ],
+            "url": {
+              "raw": "{{SUPABASE_URL}}/rest/v1/business_profiles?user_id=eq.{{BUSINESS_ID}}&select=*",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["rest", "v1", "business_profiles"],
+              "query": [
+                { "key": "user_id", "value": "eq.{{BUSINESS_ID}}" },
+                { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Business Profile (RPC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{ANON_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"p_business_name\": \"Warung Berkah Makmur\",\n  \"p_owner_name\": \"Budi Santoso\",\n  \"p_business_type\": \"Kuliner\",\n  \"p_phone\": \"081234567890\",\n  \"p_address\": \"Jl. Mawar No. 12\"\n}"
+            },
+            "url": {
+              "raw": "{{SUPABASE_URL}}/rest/v1/rpc/update_business_profile",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["rest", "v1", "rpc", "update_business_profile"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Transactions & Dashboard",
+      "item": [
+        {
+          "name": "Get Transactions (Paginated)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{ANON_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}" },
+              { "key": "Prefer", "value": "count=exact" }
+            ],
+            "url": {
+              "raw": "{{SUPABASE_URL}}/rest/v1/transactions?user_id=eq.{{BUSINESS_ID}}&deleted_at=is.null&order=transaction_date.desc&limit=20&offset=0&select=*",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["rest", "v1", "transactions"],
+              "query": [
+                { "key": "user_id", "value": "eq.{{BUSINESS_ID}}" },
+                { "key": "deleted_at", "value": "is.null" },
+                { "key": "order", "value": "transaction_date.desc" },
+                { "key": "limit", "value": "20" },
+                { "key": "offset", "value": "0" },
+                { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Transaction (RPC sync_transaction)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{ANON_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"p_transaction\": {\n    \"id\": \"33333333-3333-3333-3333-333333333333\",\n    \"user_id\": \"{{BUSINESS_ID}}\",\n    \"type\": \"income\",\n    \"amount\": 150000,\n    \"category_id\": \"sales\",\n    \"payment_method_id\": \"cash\",\n    \"transaction_date\": \"2026-11-06T09:00:00Z\",\n    \"description\": \"Penjualan paket catering\",\n    \"attachment_url\": null\n  },\n  \"p_operation\": \"create\",\n  \"p_idempotency_key\": \"44444444-4444-4444-4444-444444444444\"\n}"
+            },
+            "url": {
+              "raw": "{{SUPABASE_URL}}/rest/v1/rpc/sync_transaction",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["rest", "v1", "rpc", "sync_transaction"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Debts & Payments",
+      "item": [
+        {
+          "name": "Get Debts List",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{ANON_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}" }
+            ],
+            "url": {
+              "raw": "{{SUPABASE_URL}}/rest/v1/debts?user_id=eq.{{BUSINESS_ID}}&order=due_date.asc&select=*",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["rest", "v1", "debts"],
+              "query": [
+                { "key": "user_id", "value": "eq.{{BUSINESS_ID}}" },
+                { "key": "order", "value": "due_date.asc" },
+                { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Record Installment Payment (RPC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{ANON_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"p_payment_id\": \"66666666-6666-6666-6666-666666666666\",\n  \"p_debt_id\": \"55555555-5555-5555-5555-555555555555\",\n  \"p_amount\": 100000,\n  \"p_payment_date\": \"2026-11-06T10:00:00Z\",\n  \"p_note\": \"Cicilan ke-2 transfer\",\n  \"p_ledger_transaction_id\": \"77777777-7777-7777-7777-777777777777\",\n  \"p_ledger_description\": \"Pembayaran piutang\"\n}"
+            },
+            "url": {
+              "raw": "{{SUPABASE_URL}}/rest/v1/rpc/record_debt_payment",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["rest", "v1", "rpc", "record_debt_payment"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
