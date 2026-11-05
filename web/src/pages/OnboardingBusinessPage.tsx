@@ -196,3 +196,4 @@ export function OnboardingBusinessPage() {
     </div>
   )
 }
+

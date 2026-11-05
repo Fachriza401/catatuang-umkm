@@ -63,3 +63,4 @@ export function computePermissions(role: BusinessRole | null | undefined): Permi
 export function usePermissions(role: BusinessRole | null | undefined): Permissions {
   return useMemo(() => computePermissions(role), [role])
 }
+

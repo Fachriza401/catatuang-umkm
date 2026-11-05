@@ -18,3 +18,4 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     storageKey: 'catat_uang_web_session',
   },
 })
+

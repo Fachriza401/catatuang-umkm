@@ -132,3 +132,4 @@ export function ResetPasswordPage() {
     </div>
   )
 }
+

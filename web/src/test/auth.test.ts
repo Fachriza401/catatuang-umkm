@@ -67,3 +67,4 @@ describe('authService', () => {
     expect(supabase.auth.signOut).toHaveBeenCalled()
   })
 })
+

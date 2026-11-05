@@ -103,3 +103,4 @@ describe('usePermissions / computePermissions', () => {
     expect(permsUndef.canCreateTransaction).toBe(false)
   })
 })
+
