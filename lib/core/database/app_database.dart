@@ -1,9 +1,8 @@
-import 'dart:io';
-
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+
+import 'app_database_platform.dart'
+    if (dart.library.html) 'app_database_platform_web.dart'
+    if (dart.library.io) 'app_database_platform_native.dart';
 
 part 'app_database.g.dart';
 
@@ -653,9 +652,5 @@ class AppDatabase extends _$AppDatabase {
 }
 
 LazyDatabase _openConnection() {
-  return LazyDatabase(() async {
-    final directory = await getApplicationSupportDirectory();
-    final file = File(p.join(directory.path, 'catat_uang.sqlite'));
-    return NativeDatabase.createInBackground(file);
-  });
+  return LazyDatabase(() async => openAppDatabase());
 }

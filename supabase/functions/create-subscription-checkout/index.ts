@@ -86,7 +86,7 @@ Deno.serve(async (request: Request) => {
     const { data: planData, error: planError } = await adminClient
       .from('business_plans')
       .select(
-        'plan, price_amount, currency, billing_period_days, max_members, ' +
+        'plan, price_amount, currency, billing_period_days, ' +
           'monthly_transaction_limit, attachments_enabled',
       )
       .eq('plan', plan)

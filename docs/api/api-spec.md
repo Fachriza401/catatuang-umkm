@@ -78,9 +78,9 @@ Variabel Lingkungan yang Digunakan:
 ## 3. Modul Profil Usaha & Akses Bisnis
 
 ### 3.1 Dapatkan Hak Akses & Status Bisnis (`get_my_business_access`)
-- **Tujuan:** Memeriksa peran user, paket aktif, sisa kuota, dan permission boolean pada bisnis yang aktif.
+- **Tujuan:** Memeriksa akses akun Owner, paket aktif, dan kuota transaksi usaha milik akun.
 - **Method & Path:** `POST {{SUPABASE_URL}}/rest/v1/rpc/get_my_business_access`
-- **Peran:** `owner`, `admin`, `cashier`, `viewer`.
+- **Peran:** Owner dari akun yang sedang terautentikasi.
 - **Request Body:** `{}` (kosong).
 - **Response Sukses (200 OK):**
   ```json
@@ -90,13 +90,10 @@ Variabel Lingkungan yang Digunakan:
     "plan": "free",
     "subscription_status": "active",
     "current_period_end": null,
-    "members_used": 1,
-    "max_members": 1,
     "transactions_used": 24,
     "monthly_transaction_limit": null,
     "attachments_enabled": true,
     "can_manage_settings": true,
-    "can_manage_members": true,
     "can_create_transactions": true
   }
   ```
@@ -121,7 +118,7 @@ Variabel Lingkungan yang Digunakan:
 
 ### 3.3 Update Profil Bisnis (`update_business_profile`)
 - **Method & Path:** `POST {{SUPABASE_URL}}/rest/v1/rpc/update_business_profile`
-- **Peran:** `owner`, `admin`.
+- **Peran:** Owner dari akun yang sedang terautentikasi.
 - **Request Body:**
   ```json
   {
@@ -142,7 +139,7 @@ Variabel Lingkungan yang Digunakan:
 - **Method & Path:**  
   `GET {{SUPABASE_URL}}/rest/v1/transactions?user_id=eq.{{BUSINESS_ID}}&deleted_at=is.null&order=transaction_date.desc&offset=0&limit=20&select=*`
 - **Headers:** `Prefer: count=exact`
-- **Peran:** `owner`, `admin`, `cashier`, `viewer`.
+- **Peran:** Owner dari usaha yang datanya diminta.
 - **Response Sukses (200 OK):**
   ```json
   [
@@ -167,7 +164,7 @@ Variabel Lingkungan yang Digunakan:
 ### 4.2 Tambah / Ubah / Hapus Transaksi (`sync_transaction`)
 - **Tujuan:** Membuat transaksi baru secara aman dan idempoten.
 - **Method & Path:** `POST {{SUPABASE_URL}}/rest/v1/rpc/sync_transaction`
-- **Peran:** `owner`, `admin`, `cashier` (create).
+- **Peran:** Owner dari usaha yang datanya diubah.
 - **Request Body (Contoh Tambah Transaksi):**
   ```json
   {
@@ -200,6 +197,53 @@ Variabel Lingkungan yang Digunakan:
   }
   ```
 
+### 4.3 Ringkasan Dasbor (`get_web_dashboard_summary`)
+- **Tujuan:** Mengembalikan agregat kas, piutang/utang tersisa, titik grafik, dan maksimal lima transaksi terbaru tanpa mengirim seluruh riwayat transaksi ke browser.
+- **Method & Path:** `POST {{SUPABASE_URL}}/rest/v1/rpc/get_web_dashboard_summary`
+- **Peran:** Owner dari usaha yang diminta; akses tetap dibatasi RLS.
+- **Request Body:**
+  ```json
+  {
+    "p_business_id": "11111111-1111-1111-1111-111111111111",
+    "p_start": "2026-10-31T17:00:00Z",
+    "p_end": "2026-11-30T17:00:00Z",
+    "p_chart_start": "2026-05-31T17:00:00Z",
+    "p_chart_end": "2026-11-30T17:00:00Z",
+    "p_chart_unit": "month",
+    "p_timezone": "Asia/Jakarta"
+  }
+  ```
+- **Response Sukses (200 OK):**
+  ```json
+  {
+    "cash_balance": 1250000,
+    "period_income": 500000,
+    "period_expense": 125000,
+    "receivable_outstanding": 300000,
+    "payable_outstanding": 100000,
+    "chart_points": [
+      {
+        "bucket_start": "2026-11-01T00:00:00",
+        "income": 500000,
+        "expense": 125000
+      }
+    ],
+    "recent_transactions": [
+      {
+        "id": "33333333-3333-3333-3333-333333333333",
+        "type": "income",
+        "amount": 150000,
+        "transaction_date": "2026-11-06T09:00:00Z",
+        "description": "Penjualan paket catering",
+        "category_id": "sales",
+        "payment_method_id": "cash"
+      }
+    ]
+  }
+  ```
+- **Perhitungan:** `cash_balance` adalah jumlah masuk dikurangi jumlah keluar dari seluruh transaksi yang `deleted_at`-nya null; total periode dan grafik memakai rentang awal inklusif/akhir eksklusif; saldo utang/piutang adalah `amount - paid_amount`.
+- **Validasi & Error:** `42501` untuk sesi tanpa akses bisnis; `22023` untuk tanggal, satuan grafik, atau zona waktu tidak valid. Fungsi berjalan sebagai `SECURITY INVOKER`, tidak melonggarkan policy, dan tidak memerlukan `service_role`.
+
 ---
 
 ## 5. Modul Utang & Piutang
@@ -207,7 +251,7 @@ Variabel Lingkungan yang Digunakan:
 ### 5.1 Query Daftar Utang / Piutang
 - **Method & Path:**  
   `GET {{SUPABASE_URL}}/rest/v1/debts?user_id=eq.{{BUSINESS_ID}}&order=due_date.asc&select=*`
-- **Peran:** `owner`, `admin`, `cashier`, `viewer`.
+- **Peran:** Owner dari usaha yang datanya diminta.
 - **Response Sukses (200 OK):**
   ```json
   [
@@ -232,7 +276,7 @@ Variabel Lingkungan yang Digunakan:
 ### 5.2 Catat Pembayaran Cicilan (`record_debt_payment`)
 - **Tujuan:** Mencatat cicilan utang/piutang secara atomik, otomatis mengupdate `paid_amount` dan memasukkan mutasi ke buku kas `transactions`.
 - **Method & Path:** `POST {{SUPABASE_URL}}/rest/v1/rpc/record_debt_payment`
-- **Peran:** `owner`, `admin`, `cashier`.
+- **Peran:** Owner dari usaha yang datanya diubah.
 - **Request Body:**
   ```json
   {
@@ -266,4 +310,3 @@ Variabel Lingkungan yang Digunakan:
   ```
 - **URL Publik untuk Menampilkan Gambar:**  
   `{{SUPABASE_URL}}/storage/v1/object/public/transaction-attachments/11111111-1111-1111-1111-111111111111/bukti_1730865600.jpg`
-

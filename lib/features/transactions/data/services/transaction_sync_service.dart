@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' as io if (dart.library.html) 'package:catat_uang/core/platform/io_stub.dart';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -80,6 +81,10 @@ class TransactionSyncService {
         (response as Map).cast<String, dynamic>(),
       );
       final businessId = access['business_id'] as String;
+      if (businessId != userId) {
+        requestSync(userId);
+        return;
+      }
       await _database.writePreference(
         'business-access:$userId',
         jsonEncode(access),
@@ -95,7 +100,8 @@ class TransactionSyncService {
         final access = Map<String, dynamic>.from(
           (jsonDecode(cached) as Map).cast<String, dynamic>(),
         );
-        requestSync(access['business_id'] as String? ?? userId);
+        final businessId = access['business_id'] as String? ?? userId;
+        requestSync(businessId == userId ? businessId : userId);
       } on Object {
         requestSync(userId);
       }
@@ -260,10 +266,13 @@ class TransactionSyncService {
     if (entry.attachmentUrl != null && entry.attachmentUrl!.isNotEmpty) {
       return entry.attachmentUrl;
     }
+    if (kIsWeb) {
+      return entry.attachmentUrl;
+    }
 
-    final file = File(localPath);
+    final file = io.File(localPath);
     if (!await file.exists()) {
-      throw FileSystemException('Lampiran lokal tidak ditemukan.', localPath);
+      throw io.FileSystemException('Lampiran lokal tidak ditemukan.', localPath);
     }
     final extension =
         p.extension(localPath).isEmpty ? '.jpg' : p.extension(localPath);

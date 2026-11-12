@@ -1,5 +1,6 @@
-import 'dart:io';
+import 'dart:io' as io if (dart.library.html) 'package:catat_uang/core/platform/io_stub.dart';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -94,6 +95,22 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
   }
 
   Future<void> _loadTransaction() async {
+    final access = ref
+        .read(businessAccessProvider)
+        .when(
+          data: (value) => value,
+          loading: () => null,
+          error: (_, _) => null,
+        );
+    if (access == null || !access.canEditTransactions) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Peran Anda tidak diizinkan mengubah transaksi.';
+      });
+      return;
+    }
+
     try {
       final transaction = await ref.read(getTransactionUseCaseProvider)(
         widget.transactionId!,
@@ -221,10 +238,19 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
           loading: () => null,
           error: (_, _) => null,
         );
-    if (access == null || !access.canCreateTransactions) {
+    final hasPermission = widget.isEditing
+        ? access?.canEditTransactions ?? false
+        : access?.canCreateTransactions ?? false;
+    if (access == null || !hasPermission) {
       setState(
-        () => _errorMessage = 'Akses pencatatan transaksi tidak tersedia.',
+        () => _errorMessage = widget.isEditing
+            ? 'Akses perubahan transaksi tidak tersedia.'
+            : 'Akses pencatatan transaksi tidak tersedia.',
       );
+      return;
+    }
+    if (widget.isEditing && _transaction == null) {
+      setState(() => _errorMessage = 'Transaksi belum berhasil dimuat.');
       return;
     }
 
@@ -306,7 +332,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
           loading: () => null,
           error: (_, _) => null,
         );
-    if (access == null || !access.canCreateTransactions) {
+    if (access == null || !access.canDeleteTransactions) {
       AppSnackbar.error(context, 'Akses penghapusan transaksi tidak tersedia.');
       return;
     }
@@ -363,12 +389,40 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
   Widget build(BuildContext context) {
     final title = widget.isEditing ? 'Edit Transaksi' : 'Tambah ${_type.label}';
     final isBusy = _isSaving || _isDeleting;
+    final access = ref
+        .watch(businessAccessProvider)
+        .when(
+          data: (value) => value,
+          loading: () => null,
+          error: (_, _) => null,
+        );
+    if (widget.isEditing && !_isLoading && _transaction == null) {
+      return Scaffold(
+        appBar: AppBar(title: Text(title)),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: AppStatusBanner(
+              message: _errorMessage ?? 'Transaksi tidak dapat dibuka.',
+              tone: AppStatusTone.error,
+            ),
+          ),
+        ),
+      );
+    }
+    final canUseAttachments = ref
+        .watch(businessAccessProvider)
+        .when(
+          data: (access) => access?.attachmentsEnabled ?? false,
+          loading: () => false,
+          error: (_, _) => false,
+        );
 
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
         actions: [
-          if (widget.isEditing)
+          if (widget.isEditing && (access?.canDeleteTransactions ?? false))
             IconButton(
               onPressed: isBusy ? null : _delete,
               tooltip: 'Hapus transaksi',
@@ -531,20 +585,26 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                             textCapitalization: TextCapitalization.sentences,
                           ),
                           const SizedBox(height: AppSpacing.xl),
-                          Text(
-                            'Bukti Transaksi (opsional)',
-                            style: Theme.of(context).textTheme.titleSmall,
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          _AttachmentPicker(
-                            localPath:
-                                _pickedAttachmentPath ??
-                                _existingAttachmentPath,
-                            remoteUrl: _existingAttachmentUrl,
-                            enabled: !isBusy,
-                            onPick: _pickAttachment,
-                            onRemove: _removeAttachment,
-                          ),
+                          if (canUseAttachments) ...[
+                            Text(
+                              'Bukti Transaksi (opsional)',
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            _AttachmentPicker(
+                              localPath:
+                                  _pickedAttachmentPath ??
+                                  _existingAttachmentPath,
+                              remoteUrl: _existingAttachmentUrl,
+                              enabled: !isBusy,
+                              onPick: _pickAttachment,
+                              onRemove: _removeAttachment,
+                            ),
+                          ] else
+                            Text(
+                              'Unggah bukti transaksi belum tersedia untuk usaha ini.',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                           const SizedBox(height: AppSpacing.xxl),
                           AppButton(
                             label: widget.isEditing
@@ -767,8 +827,12 @@ class _AttachmentPreview extends ConsumerWidget {
     );
 
     if (localPath != null && localPath!.isNotEmpty) {
+      if (kIsWeb) {
+        return placeholder;
+      }
+
       return Image.file(
-        File(localPath!),
+        io.File(localPath!),
         height: 160,
         width: double.infinity,
         fit: BoxFit.cover,

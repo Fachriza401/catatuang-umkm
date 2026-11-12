@@ -31,13 +31,11 @@ supabase start
 supabase test db
 ```
 
-Pastikan urutan eksekusi:
-
-1. `supabase/migrations/20261031000000_init_catat_uang.sql`
-2. `supabase/migrations/20261031010000_debts_and_payments.sql`
-3. `supabase/migrations/20261101000000_transaction_sync_rpc.sql`
-4. `supabase/migrations/20261101020000_business_security_and_plans.sql`
-5. `supabase/migrations/20261101030000_subscription_payments.sql`
+Terapkan seluruh file migration di `supabase/migrations` sesuai urutan nama
+(perintah `supabase db push` menjalankan migration yang belum diterapkan).
+Migration `20261107040000_owner_only_business_access.sql` menghapus relasi dan
+endpoint anggota, mencabut akses anggota lama tanpa menghapus akun Auth mereka,
+dan menetapkan akses Owner saja.
 
 ## 3) Konfigurasi aplikasi production
 
@@ -86,7 +84,7 @@ menjaga agar notifikasi ganda tidak memperpanjang langganan dua kali.
 ## 4) RLS dan security checklist
 
 - Pastikan tenant ID hanya berasal dari sesi user yang valid.
-- Gunakan `auth.uid()` dan query ke `business_members` / `business_access`.
+- Pastikan `auth.uid()` hanya dapat membaca dan mengubah data usaha milik akun Owner tersebut.
 - Pastikan `transaction_sync_requests` tidak bisa diakses langsung dari client.
 - Batasi file upload ke bucket `transaction-attachments` dengan private policy.
 - Gunakan Edge Function `delete-account` untuk penghapusan akun aman.
@@ -117,7 +115,7 @@ Biarkan `{{ .ConfirmationURL }}` tetap ada jika tautan juga ingin dipertahankan.
 
 - [ ] auth login berhasil
 - [ ] insert transaksi lokal dan sync berhasil
-- [ ] role owner/admin/cashier/viewer sesuai
+- [ ] akun Owner hanya dapat mengakses data usahanya sendiri
 - [ ] RLS gagal saat cross-tenant
 - [ ] upload attachment berhasil dengan signed URL
 - [ ] delete-account utility berjalan aman

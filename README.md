@@ -34,13 +34,10 @@ soft delete dan ikut dikirim melalui outbox.
 
 ## Supabase
 
-Jalankan migration berurutan pada proyek Supabase:
-
-1. `supabase/migrations/20261031000000_init_catat_uang.sql`
-2. `supabase/migrations/20261031010000_debts_and_payments.sql`
-3. `supabase/migrations/20261101000000_transaction_sync_rpc.sql`
-4. `supabase/migrations/20261101020000_business_security_and_plans.sql`
-5. `supabase/migrations/20261101030000_subscription_payments.sql`
+Terapkan semua migration di `supabase/migrations` berurutan berdasarkan nama
+(misalnya dengan `supabase db push`). Migration terakhir,
+`20261107040000_owner_only_business_access.sql`, menetapkan satu akun Owner per
+usaha dan menghapus dukungan akses anggota tanpa menghapus akun Auth mereka.
 
 RPC memeriksa identitas user, mencatat response untuk idempotency key dalam
 transaksi database yang sama dengan perubahan transaksi, dan mengembalikan
@@ -50,17 +47,17 @@ ke tabel internal `transaction_sync_requests`.
 ## Keamanan dan Paket
 
 `transactions.user_id`, `debts.user_id`, dan `debt_payments.user_id` adalah ID
-tenant usaha. Server menentukan business context dari sesi anggota; nilai dari
-Flutter tidak memberi otorisasi. RLS hanya membuka baris untuk owner dan anggota
-bisnis tersebut. Owner/admin dapat mengelola profil dan anggota, cashier dapat
-mencatat transaksi/pembayaran, sedangkan viewer hanya dapat membaca. Mutasi
-transaksi wajib lewat RPC; status dan role selalu diperiksa di PostgreSQL.
+akun pemilik usaha. Aplikasi mobile dan web menggunakan akun Owner yang sama;
+tidak ada akun atau peran Admin, Kasir, maupun Viewer. Setiap akun hanya dapat
+membaca dan mengubah data usahanya sendiri. Mutasi transaksi wajib lewat RPC
+dan otorisasi diperiksa di PostgreSQL.
 
-Paket awal: Free memiliki 1 akun, 200 transaksi per bulan, tanpa lampiran;
-Premium memiliki 5 akun dan 5.000 transaksi per bulan; Business memiliki 25 akun
-dan transaksi tanpa batas. Premium dan Business dapat memakai bukti transaksi
-privat. Batas anggota, transaksi, dan upload ditegakkan oleh RPC atau Storage
-RLS, bukan hanya kontrol UI. Entitlement berbayar hanya aktif jika status server
+Paket awal: Free memiliki 200 transaksi per bulan tanpa lampiran; Premium
+memiliki 5.000 transaksi per bulan; Business memiliki transaksi tanpa batas.
+Semua paket menggunakan satu akun Owner untuk tiap usaha. Premium dan Business
+dapat memakai bukti transaksi privat. Batas transaksi dan upload ditegakkan
+oleh RPC atau Storage RLS, bukan hanya kontrol UI. Entitlement berbayar hanya
+aktif jika status server
 `active` dan periode langganan belum berakhir. Client tidak dapat menulis tabel
 langganan; backend provisioning hanya menerima role `service_role`.
 
@@ -113,31 +110,7 @@ uji dengan migration di atas dan sesi authenticated.
 
 Security tests PostgreSQL ada di `supabase/tests/business_security.test.sql`.
 Jalankan setelah migration pada Supabase lokal dengan `supabase test db`; tes ini
-mencakup isolasi tenant, owner/admin/cashier/viewer, kuota Free, dan perubahan
-subscription yang ditolak dari client.
+mencakup isolasi data per Owner, akses akun lama yang pernah menjadi anggota,
+kuota Free, dan perubahan subscription yang ditolak dari client.
 
-## Persiapan Rilis Play Store
-
-Untuk release Android, buat keystore baru sebelum build production:
-
-```powershell
-Set-Location D:\Blajar
-.\scripts\generate_android_keystore.ps1
-```
-
-Setelah itu, build produksi dengan:
-
-```powershell
-Set-Location D:\Blajar
-$env:SUPABASE_URL = 'https://<project-ref>.supabase.co'
-$env:SUPABASE_PUBLISHABLE_KEY = '<publishable-key>'
-.\scripts\build_release_android.ps1
-```
-
-Dokumen lanjutan:
-
-- `docs/release_play_store_setup.md`
-- `docs/supabase_production_setup.md`
-
-> `android/key.properties` dan `android/upload-keystore.jks` dikecualikan dari repo dan wajib dibuat di lingkungan release yang aman.
 # catatuang-umkm

@@ -24,10 +24,7 @@ val releaseSigningConfigured =
 val validateReleaseSigning = tasks.register("validateReleaseSigning") {
     doLast {
         if (!releaseSigningConfigured) {
-            throw GradleException(
-                "Release signing is not configured. Create android/key.properties " +
-                    "and keep the upload keystore outside version control.",
-            )
+            logger.warn("Release signing is not configured. Falling back to debug signing for ad-hoc APK distribution.")
         }
     }
 }
@@ -71,9 +68,7 @@ android {
 
     buildTypes {
         release {
-            if (releaseSigningConfigured) {
-                signingConfig = signingConfigs.getByName("release")
-            }
+            signingConfig = if (releaseSigningConfigured) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
     }
 }

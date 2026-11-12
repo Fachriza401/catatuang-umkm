@@ -75,6 +75,11 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
           loading: () => false,
           error: (_, _) => false,
         );
+    final canEdit = ref.watch(businessAccessProvider).when(
+          data: (access) => access?.canEditTransactions ?? false,
+          loading: () => false,
+          error: (_, _) => false,
+        );
 
     return Scaffold(
       appBar: AppBar(
@@ -213,9 +218,11 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                             const SizedBox(height: AppSpacing.xs),
                         itemBuilder: (context, index) => TransactionTile(
                           transaction: filtered[index],
-                          onTap: () => context.push(
-                            AppRoutes.transactionEdit(filtered[index].id),
-                          ),
+                          onTap: canEdit
+                              ? () => context.push(
+                                  AppRoutes.transactionEdit(filtered[index].id),
+                                )
+                              : null,
                         ),
                       ),
               ),

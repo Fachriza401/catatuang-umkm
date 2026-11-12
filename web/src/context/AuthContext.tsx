@@ -14,14 +14,11 @@ interface AuthContextType {
   permissions: Permissions
   isLoading: boolean
   isBusinessLoading: boolean
-  selectBusiness: (business: UserBusinessOption) => void
   refreshBusinessAccess: () => Promise<void>
   logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
-
-const SELECTED_BUSINESS_KEY = 'catatuang_selected_business_id'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
@@ -41,30 +38,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const businesses = await businessService.listUserBusinesses(activeUser.id)
       setUserBusinesses(businesses)
-
-      const savedBusinessId = localStorage.getItem(SELECTED_BUSINESS_KEY)
-      let selected: UserBusinessOption | null = null
-
-      if (savedBusinessId) {
-        selected = businesses.find((b) => b.business_id === savedBusinessId) || null
-      }
-
-      if (!selected && businesses.length > 0) {
-        selected = businesses[0]
-      }
+      const selected = businesses[0] ?? null
 
       setCurrentBusiness(selected)
       if (selected) {
-        localStorage.setItem(SELECTED_BUSINESS_KEY, selected.business_id)
         try {
           const access = await businessService.getMyBusinessAccess()
           setBusinessAccess(access)
         } catch {
-          // If RPC fails (e.g. mock or network), fallback to selected role
           setBusinessAccess(null)
         }
       } else {
-        localStorage.removeItem(SELECTED_BUSINESS_KEY)
         setBusinessAccess(null)
       }
     } catch (err) {
@@ -100,7 +84,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserBusinesses([])
         setCurrentBusiness(null)
         setBusinessAccess(null)
-        localStorage.removeItem(SELECTED_BUSINESS_KEY)
       }
       setIsLoading(false)
     })
@@ -110,14 +93,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       unsubscribe()
     }
   }, [])
-
-  const selectBusiness = (business: UserBusinessOption) => {
-    setCurrentBusiness(business)
-    localStorage.setItem(SELECTED_BUSINESS_KEY, business.business_id)
-    businessService.getMyBusinessAccess()
-      .then((access) => setBusinessAccess(access))
-      .catch((err) => console.error('Failed refreshing access:', err))
-  }
 
   const refreshBusinessAccess = async () => {
     if (!user) return
@@ -131,7 +106,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCurrentBusiness(null)
     setBusinessAccess(null)
     setUserBusinesses([])
-    localStorage.removeItem(SELECTED_BUSINESS_KEY)
   }
 
   return (
@@ -145,7 +119,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         permissions,
         isLoading,
         isBusinessLoading,
-        selectBusiness,
         refreshBusinessAccess,
         logout,
       }}

@@ -51,8 +51,9 @@ class _DebtFormPageState extends ConsumerState<DebtFormPage> {
       initialDate: current,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
-      helpText:
-          dueDate ? 'Pilih tanggal jatuh tempo' : 'Pilih tanggal transaksi',
+      helpText: dueDate
+          ? 'Pilih tanggal jatuh tempo'
+          : 'Pilih tanggal transaksi',
       cancelText: 'Batal',
       confirmText: 'Pilih',
     );
@@ -83,7 +84,9 @@ class _DebtFormPageState extends ConsumerState<DebtFormPage> {
       );
       return;
     }
-    final access = ref.read(businessAccessProvider).when(
+    final access = ref
+        .read(businessAccessProvider)
+        .when(
           data: (value) => value,
           loading: () => null,
           error: (_, _) => null,
@@ -91,13 +94,15 @@ class _DebtFormPageState extends ConsumerState<DebtFormPage> {
     if (access == null || !access.canManageSettings) {
       AppSnackbar.error(
         context,
-        'Hanya owner atau admin dapat mencatat utang.',
+        'Hanya pemilik usaha yang dapat mencatat utang.',
       );
       return;
     }
     setState(() => _isSaving = true);
     try {
-      await ref.read(debtRepositoryProvider).create(
+      await ref
+          .read(debtRepositoryProvider)
+          .create(
             DebtDraft(
               userId: access.businessId,
               type: _type,

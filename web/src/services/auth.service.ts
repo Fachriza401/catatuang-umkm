@@ -52,6 +52,22 @@ export const authService = {
     return data
   },
 
+  async updatePassword(newPassword: string) {
+    return this.resetPassword(newPassword)
+  },
+
+  async updateEmail(email: string) {
+    const { data, error } = await supabase.auth.updateUser({ email })
+    if (error) throw error
+    return data
+  },
+
+  async updateProfile(metadata: { full_name?: string; avatar_url?: string }) {
+    const { data, error } = await supabase.auth.updateUser({ data: metadata })
+    if (error) throw error
+    return data
+  },
+
   async logout() {
     const { error } = await supabase.auth.signOut()
     if (error) throw error

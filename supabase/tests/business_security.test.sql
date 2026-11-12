@@ -1,6 +1,6 @@
 begin;
 
-select extensions.plan(18);
+select extensions.no_plan();
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password,
@@ -8,11 +8,10 @@ insert into auth.users (
 ) values
   ('00000000-0000-0000-0000-000000000000', '10000000-0000-4000-8000-000000000001', 'authenticated', 'authenticated', 'owner-one@test.invalid', '', now(), now(), now()),
   ('00000000-0000-0000-0000-000000000000', '10000000-0000-4000-8000-000000000002', 'authenticated', 'authenticated', 'owner-two@test.invalid', '', now(), now(), now()),
-  ('00000000-0000-0000-0000-000000000000', '10000000-0000-4000-8000-000000000003', 'authenticated', 'authenticated', 'admin@test.invalid', '', now(), now(), now()),
-  ('00000000-0000-0000-0000-000000000000', '10000000-0000-4000-8000-000000000004', 'authenticated', 'authenticated', 'cashier@test.invalid', '', now(), now(), now()),
-  ('00000000-0000-0000-0000-000000000000', '10000000-0000-4000-8000-000000000005', 'authenticated', 'authenticated', 'viewer@test.invalid', '', now(), now(), now()),
-  ('00000000-0000-0000-0000-000000000000', '10000000-0000-4000-8000-000000000006', 'authenticated', 'authenticated', 'outsider@test.invalid', '', now(), now(), now()),
-  ('00000000-0000-0000-0000-000000000000', '10000000-0000-4000-8000-000000000007', 'authenticated', 'authenticated', 'new-member@test.invalid', '', now(), now(), now());
+  ('00000000-0000-0000-0000-000000000000', '10000000-0000-4000-8000-000000000003', 'authenticated', 'authenticated', 'former-member@test.invalid', '', now(), now(), now()),
+  ('00000000-0000-0000-0000-000000000000', '10000000-0000-4000-8000-000000000004', 'authenticated', 'authenticated', 'former-member-2@test.invalid', '', now(), now(), now()),
+  ('00000000-0000-0000-0000-000000000000', '10000000-0000-4000-8000-000000000005', 'authenticated', 'authenticated', 'outsider@test.invalid', '', now(), now(), now()),
+  ('00000000-0000-0000-0000-000000000000', '10000000-0000-4000-8000-000000000006', 'authenticated', 'authenticated', 'new-owner@test.invalid', '', now(), now(), now());
 
 insert into public.business_profiles (user_id, business_name)
 values
@@ -23,12 +22,6 @@ update public.business_subscriptions
   set plan = 'business', status = 'active',
       current_period_end = now() + interval '30 days'
   where business_id = '10000000-0000-4000-8000-000000000001';
-
-insert into public.business_members (business_id, member_user_id, role, created_by)
-values
-  ('10000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000003', 'admin', '10000000-0000-4000-8000-000000000001'),
-  ('10000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000004', 'cashier', '10000000-0000-4000-8000-000000000001'),
-  ('10000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000005', 'viewer', '10000000-0000-4000-8000-000000000001');
 
 insert into public.transactions (
   id, user_id, created_by, type, amount, category_id, payment_method_id,
@@ -67,58 +60,13 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000003', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
-select extensions.is((select count(*)::integer from public.transactions), 1, 'admin reads its business transactions');
-select extensions.lives_ok(
-  $$select public.update_business_profile('Nama Admin', '', '', '', '')$$,
-  'admin can update business settings'
-);
-select extensions.throws_ok(
-  $$select public.add_business_member('new-member@test.invalid', 'admin')$$,
-  '42501',
-  'Only the owner can assign admin role',
-  'admin cannot grant admin role'
-);
-reset role;
-
-set local role authenticated;
-select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000001', true);
-select set_config('request.jwt.claim.role', 'authenticated', true);
+select extensions.is((select count(*)::integer from public.transactions), 0, 'former member cannot read the previous business');
 select extensions.is(
-  public.add_business_member('new-member@test.invalid', 'cashier'),
-  '10000000-0000-4000-8000-000000000007'::uuid,
-  'owner can add an allowed business member'
+  public.get_my_business_access()->>'business_id',
+  '10000000-0000-4000-8000-000000000003',
+  'former member account resolves only to its own business id'
 );
-reset role;
-
-set local role authenticated;
-select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000004', true);
-select set_config('request.jwt.claim.role', 'authenticated', true);
-select extensions.lives_ok(
-  $$select public.sync_transaction(
-    jsonb_build_object(
-      'id', '20000000-0000-4000-8000-000000000003',
-      'user_id', '10000000-0000-4000-8000-000000000001',
-      'type', 'income', 'amount', 5000, 'category_id', 'sales',
-      'payment_method_id', 'cash', 'transaction_date', now(),
-      'description', 'Kasir', 'attachment_url', null,
-      'created_at', now(), 'updated_at', now(), 'deleted_at', null
-    ),
-    'create', '20000000-0000-4000-8000-000000000003', null
-  )$$,
-  'cashier can create a transaction through the protected RPC'
-);
-select extensions.throws_ok(
-  $$select public.update_business_profile('Tidak boleh', '', '', '', '')$$,
-  '42501',
-  'Insufficient business role',
-  'cashier cannot update owner business settings'
-);
-reset role;
-
-set local role authenticated;
-select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000005', true);
-select set_config('request.jwt.claim.role', 'authenticated', true);
-select extensions.is((select count(*)::integer from public.transactions), 2, 'viewer can read business transactions');
+select extensions.is(public.get_my_business_access()->>'role', 'owner', 'every account has only the owner role');
 select extensions.throws_ok(
   $$select public.sync_transaction(
     jsonb_build_object(
@@ -126,18 +74,29 @@ select extensions.throws_ok(
       'user_id', '10000000-0000-4000-8000-000000000001',
       'type', 'income', 'amount', 5000, 'category_id', 'sales',
       'payment_method_id', 'cash', 'transaction_date', now(),
-      'description', 'Viewer', 'created_at', now(), 'updated_at', now()
+      'description', 'Former member', 'created_at', now(), 'updated_at', now()
     ),
     'create', '20000000-0000-4000-8000-000000000004', null
   )$$,
   '42501',
   'Business write access denied',
-  'viewer cannot create transactions'
+  'former member cannot write to the previous business'
 );
 reset role;
 
+select extensions.is(to_regclass('public.business_members') is null, true, 'member table is removed');
+select extensions.is(to_regprocedure('public.add_business_member(text,text)') is null, true, 'member invitation RPC is removed');
+select extensions.is(
+  (select count(*) = 0 from information_schema.columns
+   where table_schema = 'public'
+     and table_name = 'business_plans'
+     and column_name = 'max_members'),
+  true,
+  'member plan limits are removed'
+);
+
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000006', true);
+select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000005', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
 select extensions.is((select count(*)::integer from public.transactions), 0, 'unrelated user cannot read another business');
 reset role;
@@ -145,12 +104,6 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000002', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
-select extensions.throws_ok(
-  $$select public.add_business_member('outsider@test.invalid', 'viewer')$$,
-  'P0001',
-  'Member limit reached for current plan',
-  'Free plan member limit is enforced in PostgreSQL'
-);
 select extensions.throws_ok(
   $$update public.business_subscriptions set plan = 'business' where business_id = '10000000-0000-4000-8000-000000000002'$$,
   '42501',

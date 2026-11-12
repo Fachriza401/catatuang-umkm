@@ -12,10 +12,8 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../domain/entities/business_access.dart';
-import '../../domain/entities/business_member.dart';
 import '../../domain/entities/business_profile.dart';
 import '../providers/business_access_provider.dart';
-import '../providers/business_members_provider.dart';
 import '../providers/business_profile_providers.dart';
 
 class BusinessSettingsPage extends ConsumerStatefulWidget {
@@ -118,7 +116,7 @@ class _BusinessSettingsPageState extends ConsumerState<BusinessSettingsPage> {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.xl),
-                _BusinessMembersSection(access: access),
+                _PlanSummary(access: access),
                 const SizedBox(height: AppSpacing.xl),
                 _SettingsSection(
                   title: 'Keamanan akun',
@@ -300,6 +298,9 @@ class _BusinessHeroCard extends StatelessWidget {
       businessType,
     ].where((value) => value.isNotEmpty).join(' • ');
     final displayName = businessName.isEmpty ? 'Profil usaha' : businessName;
+    final transactionValue = access.monthlyTransactionLimit == null
+        ? '${access.transactionsUsed}'
+        : '${access.transactionsUsed}/${access.monthlyTransactionLimit}';
 
     return Container(
       decoration: BoxDecoration(
@@ -374,7 +375,7 @@ class _BusinessHeroCard extends StatelessWidget {
                             const SizedBox(height: AppSpacing.xs),
                             Text(
                               details.isEmpty
-                                  ? 'Lengkapi profil agar mudah dikenali tim'
+                                  ? 'Lengkapi informasi profil usaha'
                                   : details,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
@@ -396,25 +397,20 @@ class _BusinessHeroCard extends StatelessWidget {
                   const SizedBox(height: AppSpacing.lg),
                   Row(
                     children: [
-                       Expanded(
-                        child: _HeroStat(
-                          icon: Icons.people_alt_outlined,
-                          label: 'Anggota',
-                          value: '${access.membersUsed}',
-                        ),
-                      ),
                       Expanded(
                         child: _HeroStat(
                           icon: Icons.receipt_long_outlined,
                           label: 'Transaksi',
-                          value: '${access.transactionsUsed}',
+                          value: transactionValue,
                         ),
                       ),
                       Expanded(
                         child: _HeroStat(
                           icon: Icons.image_outlined,
                           label: 'Bukti',
-                          value: 'Aktif',
+                          value: access.attachmentsEnabled
+                              ? 'Aktif'
+                              : 'Tidak aktif',
                         ),
                       ),
                     ],
@@ -503,7 +499,6 @@ class _SettingsSection extends StatelessWidget {
     required this.icon,
     required this.children,
     this.subtitle,
-    this.trailing,
     this.tone = AppColors.primary,
     this.toneSoft = AppColors.primarySoft,
   });
@@ -511,7 +506,6 @@ class _SettingsSection extends StatelessWidget {
   final String title;
   final String? subtitle;
   final IconData icon;
-  final Widget? trailing;
   final Color tone;
   final Color toneSoft;
   final List<Widget> children;
@@ -556,10 +550,6 @@ class _SettingsSection extends StatelessWidget {
                   ],
                 ),
               ),
-              if (trailing != null) ...[
-                const SizedBox(width: AppSpacing.sm),
-                trailing!,
-              ],
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -768,310 +758,121 @@ class _BusinessProfileEditorState
   }
 }
 
-class _BusinessMembersSection extends ConsumerWidget {
-  const _BusinessMembersSection({required this.access});
+class _PlanSummary extends StatelessWidget {
+  const _PlanSummary({required this.access});
 
   final BusinessAccess access;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final members = ref.watch(businessMembersProvider(access.businessId));
-    final canAddMember =
-        access.canManageMembers && access.membersUsed < access.maxMembers;
+  Widget build(BuildContext context) {
     return _SettingsSection(
-      title: 'Anggota usaha',
-      subtitle: 'Kelola akses tim dan perannya',
-      icon: Icons.people_alt_outlined,
+      title: 'Penggunaan usaha',
+      subtitle: 'Ringkasan penggunaan fitur usaha saat ini',
+      icon: Icons.query_stats_outlined,
       tone: AppColors.info,
       toneSoft: AppColors.infoSoft,
-      trailing: access.canManageMembers
-          ? IconButton.filledTonal(
-              tooltip: 'Tambah anggota',
-              onPressed: canAddMember
-                  ? () => _addMember(context, ref, access)
-                  : null,
-              icon: const Icon(Icons.person_add_alt_1_outlined, size: 20),
-            )
-          : null,
       children: [
-        members.when(
-          loading: () => const LinearProgressIndicator(),
-          error: (error, stackTrace) => Text('Anggota gagal dimuat: $error'),
-          data: (items) => items.isEmpty
-              ? const _InlineEmptyState(
-                  icon: Icons.group_add_outlined,
-                  message:
-                      'Belum ada anggota tambahan. Undang tim untuk '
-                      'mencatat transaksi bersama.',
-                )
-              : Column(
-                  children: [
-                    for (final member in items)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        child: _MemberRow(
-                          member: member,
-                          access: access,
-                          onAction: (action) => _memberAction(
-                            context,
-                            ref,
-                            access,
-                            member,
-                            action,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+        _UsageMeter(
+          label: 'Transaksi bulan ini',
+          used: access.transactionsUsed,
+          limit: access.monthlyTransactionLimit,
+          color: AppColors.success,
+        ),
+        _FeatureRow(
+          icon: Icons.image_outlined,
+          label: 'Bukti transaksi privat',
+          enabled: access.attachmentsEnabled,
         ),
       ],
     );
   }
-
-  Future<void> _addMember(
-    BuildContext context,
-    WidgetRef ref,
-    BusinessAccess access,
-  ) async {
-    final email = TextEditingController();
-    var role = 'cashier';
-    final result = await showDialog<(String, String)?>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Tambah anggota usaha'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: email,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: 'Email akun'),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              DropdownButtonFormField<String>(
-                initialValue: role,
-                decoration: const InputDecoration(labelText: 'Peran'),
-                items: [
-                  if (access.isOwner)
-                    const DropdownMenuItem(
-                      value: 'admin',
-                      child: Text('Admin'),
-                    ),
-                  const DropdownMenuItem(
-                    value: 'cashier',
-                    child: Text('Kasir'),
-                  ),
-                  const DropdownMenuItem(
-                    value: 'viewer',
-                    child: Text('Viewer'),
-                  ),
-                ],
-                onChanged: (value) {
-                  if (value != null) setDialogState(() => role = value);
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: () =>
-                  Navigator.pop(dialogContext, (email.text.trim(), role)),
-              child: const Text('Tambahkan'),
-            ),
-          ],
-        ),
-      ),
-    );
-    email.dispose();
-    if (result == null || result.$1.isEmpty || !context.mounted) return;
-    try {
-      final client = ref.read(supabaseServiceProvider).client;
-      if (client == null) throw StateError('Sesi Supabase tidak tersedia.');
-      await client.rpc(
-        'add_business_member',
-        params: {'p_email': result.$1, 'p_role': result.$2},
-      );
-      ref.invalidate(businessMembersProvider(access.businessId));
-      ref.invalidate(businessAccessProvider);
-      if (!context.mounted) return;
-      _showMessage(context, 'Anggota berhasil ditambahkan.');
-    } catch (error) {
-      if (!context.mounted) return;
-      _showMessage(context, 'Anggota gagal ditambahkan: $error');
-    }
-  }
-
-  Future<void> _memberAction(
-    BuildContext context,
-    WidgetRef ref,
-    BusinessAccess access,
-    BusinessMember member,
-    String action,
-  ) async {
-    try {
-      final client = ref.read(supabaseServiceProvider).client;
-      if (client == null) throw StateError('Sesi Supabase tidak tersedia.');
-      if (action == 'remove') {
-        final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: const Text('Hapus anggota?'),
-            content: Text('Akses ${member.email} ke usaha akan dicabut.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('Batal'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(dialogContext, true),
-                child: const Text('Hapus'),
-              ),
-            ],
-          ),
-        );
-        if (confirmed != true || !context.mounted) return;
-        await client.rpc(
-          'remove_business_member',
-          params: {'p_member_user_id': member.userId},
-        );
-      } else {
-        await client.rpc(
-          'update_business_member_role',
-          params: {'p_member_user_id': member.userId, 'p_role': action},
-        );
-      }
-      ref.invalidate(businessMembersProvider(access.businessId));
-      ref.invalidate(businessAccessProvider);
-      if (!context.mounted) return;
-      _showMessage(
-        context,
-        action == 'remove'
-            ? 'Anggota berhasil dihapus.'
-            : 'Peran anggota berhasil diperbarui.',
-      );
-    } catch (error) {
-      if (!context.mounted) return;
-      _showMessage(context, 'Perubahan anggota gagal: $error');
-    }
-  }
 }
 
-class _MemberRow extends StatelessWidget {
-  const _MemberRow({
-    required this.member,
-    required this.access,
-    required this.onAction,
+class _UsageMeter extends StatelessWidget {
+  const _UsageMeter({
+    required this.label,
+    required this.used,
+    required this.limit,
+    required this.color,
   });
 
-  final BusinessMember member;
-  final BusinessAccess access;
-  final ValueChanged<String> onAction;
+  final String label;
+  final int used;
+  final int? limit;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final actions = <PopupMenuEntry<String>>[
-      if (access.isOwner && member.role != 'admin')
-        const PopupMenuItem(value: 'admin', child: Text('Jadikan admin')),
-      if (member.role != 'cashier')
-        const PopupMenuItem(value: 'cashier', child: Text('Jadikan kasir')),
-      if (member.role != 'viewer')
-        const PopupMenuItem(value: 'viewer', child: Text('Jadikan viewer')),
-      const PopupMenuItem(value: 'remove', child: Text('Hapus anggota')),
-    ];
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: AppColors.primarySoft,
-            child: Text(
-              member.email.isEmpty
-                  ? '?'
-                  : member.email.characters.first.toUpperCase(),
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: AppColors.primaryDeep,
+    final hasLimit = limit != null && limit! > 0;
+    final ratio = hasLimit ? (used / limit!).clamp(0.0, 1.0).toDouble() : 1.0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+            ),
+            Text(
+              hasLimit ? '$used / $limit' : '$used / tanpa batas',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: color,
                 fontWeight: FontWeight.w700,
               ),
             ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.full),
+          child: LinearProgressIndicator(
+            value: ratio,
+            minHeight: 8,
+            backgroundColor: AppColors.surfaceMuted,
+            color: color,
           ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  member.email,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: AppSpacing.xxs),
-                _RoleChip(role: member.role),
-              ],
-            ),
-          ),
-          if (access.canManageMembers)
-            PopupMenuButton<String>(
-              tooltip: 'Kelola anggota',
-              onSelected: onAction,
-              itemBuilder: (context) => actions,
-            ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-class _RoleChip extends StatelessWidget {
-  const _RoleChip({required this.role});
+class _FeatureRow extends StatelessWidget {
+  const _FeatureRow({
+    required this.icon,
+    required this.label,
+    required this.enabled,
+  });
 
-  final String role;
+  final IconData icon;
+  final String label;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
-    final (color, softColor) = switch (role) {
-      'admin' => (AppColors.info, AppColors.infoSoft),
-      'cashier' => (AppColors.success, AppColors.successSoft),
-      _ => (AppColors.textSecondary, AppColors.surfaceMuted),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: 1,
-      ),
-      decoration: BoxDecoration(
-        color: softColor,
-        borderRadius: BorderRadius.circular(AppRadius.full),
-        border: Border.all(color: color.withValues(alpha: 0.24)),
-      ),
-      child: Text(
-        _roleLabel(role),
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w600,
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AppColors.textSecondary),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Text(label, style: Theme.of(context).textTheme.bodySmall),
         ),
-      ),
+        Icon(
+          enabled ? Icons.check_circle_rounded : Icons.remove_circle_outline,
+          size: 18,
+          color: enabled ? AppColors.success : AppColors.textMuted,
+        ),
+        const SizedBox(width: AppSpacing.xs),
+        Text(
+          enabled ? 'Aktif' : 'Tidak termasuk',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: enabled ? AppColors.success : AppColors.textMuted,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
-
-  String _roleLabel(String role) => switch (role) {
-    'admin' => 'Admin',
-    'cashier' => 'Kasir',
-    _ => 'Viewer',
-  };
 }
 
 class _DangerZone extends StatelessWidget {
@@ -1124,33 +925,6 @@ class _DangerZone extends StatelessWidget {
             variant: AppButtonVariant.danger,
             isLoading: isDeleting,
             onPressed: onDelete,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InlineEmptyState extends StatelessWidget {
-  const _InlineEmptyState({required this.icon, required this.message});
-
-  final IconData icon;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.textMuted, size: 22),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Text(message, style: Theme.of(context).textTheme.bodySmall),
           ),
         ],
       ),

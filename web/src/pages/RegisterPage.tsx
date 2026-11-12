@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { z } from 'zod'
 import { authService } from '../services/auth.service'
 import { Lock, Mail, User, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react'
+import { BrandLogo } from '../components/BrandLogo'
 
 const registerSchema = z.object({
   fullName: z.string().min(2, 'Nama lengkap minimal 2 karakter'),
@@ -58,9 +59,7 @@ export function RegisterPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4 sm:p-6 lg:p-8">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#004ac6] text-white font-extrabold text-2xl shadow-md">
-            CU
-          </div>
+          <BrandLogo className="mx-auto h-12 w-12 rounded-lg" />
           <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">
             Daftar Akun Catat<span className="text-[#004ac6]">Uang</span>
           </h1>
@@ -184,4 +183,3 @@ export function RegisterPage() {
     </div>
   )
 }
-

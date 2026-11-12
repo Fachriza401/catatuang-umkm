@@ -1,12 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '../types/database.types'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://example.supabase.co'
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'demo-anon-key'
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Konfigurasi Supabase tidak lengkap. Pastikan VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY telah diisi di file .env'
+if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+  console.warn(
+    'Konfigurasi Supabase belum lengkap; menggunakan credential demo untuk tampilan awal. Isi VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY di file .env untuk fitur login yang sesungguhnya.'
   )
 }
 

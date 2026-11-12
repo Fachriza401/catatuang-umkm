@@ -218,6 +218,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           error: (_, _) => null,
         );
     final canCreateTransactions = access?.canCreateTransactions ?? false;
+    final canEditTransactions = access?.canEditTransactions ?? false;
     BusinessAccess? resolvedAccess = access;
     if (resolvedAccess == null && user != null) {
       resolvedAccess = BusinessAccess.ownerFallback(user.id);
@@ -469,8 +470,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       _RecentTransactions(
                         transactions: data.recentTransactions,
                         hideAmounts: isBalanceHidden,
-                        onAdd: _openNewTransaction,
-                        onTap: _openEditTransaction,
+                        onAdd: canCreateTransactions
+                            ? _openNewTransaction
+                            : null,
+                        onTap: canEditTransactions
+                            ? _openEditTransaction
+                            : null,
                       ),
                     ],
                   ),
@@ -1135,8 +1140,8 @@ class _RecentTransactions extends StatelessWidget {
 
   final List<MoneyTransaction> transactions;
   final bool hideAmounts;
-  final VoidCallback onAdd;
-  final ValueChanged<MoneyTransaction> onTap;
+  final VoidCallback? onAdd;
+  final ValueChanged<MoneyTransaction>? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1183,12 +1188,14 @@ class _RecentTransactions extends StatelessWidget {
                 message:
                     'Mulai catat pemasukan dan pengeluaran usaha Anda agar '
                     'laporan keuangan lebih rapi.',
-                action: AppButton(
-                  label: 'Tambah Transaksi',
-                  icon: Icons.add_rounded,
-                  isExpanded: false,
-                  onPressed: onAdd,
-                ),
+                action: onAdd == null
+                    ? null
+                    : AppButton(
+                        label: 'Tambah Transaksi',
+                        icon: Icons.add_rounded,
+                        isExpanded: false,
+                        onPressed: onAdd,
+                      ),
               ),
             )
           else
@@ -1197,7 +1204,7 @@ class _RecentTransactions extends StatelessWidget {
               TransactionTile(
                 transaction: transactions[index],
                 hideAmount: hideAmounts,
-                onTap: () => onTap(transactions[index]),
+                onTap: onTap == null ? null : () => onTap!(transactions[index]),
               ),
             ],
           if (transactions.isNotEmpty) const SizedBox(height: AppSpacing.sm),

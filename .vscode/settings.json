@@ -1,4 +1,5 @@
 {
   "dart.flutterSdkPath": "D:\\src\\flutter",
-  "dart.sdkPath": "D:\\src\\flutter\\bin\\cache\\dart-sdk"
+  "dart.sdkPath": "D:\\src\\flutter\\bin\\cache\\dart-sdk",
+  "cmake.sourceDirectory": "D:/Blajar/windows"
 }

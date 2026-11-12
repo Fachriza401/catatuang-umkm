@@ -6,8 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type BusinessRole = 'owner' | 'admin' | 'cashier' | 'viewer'
-export type MemberRole = 'admin' | 'cashier' | 'viewer'
+export type BusinessRole = 'owner'
 export type TransactionType = 'income' | 'expense'
 export type DebtType = 'receivable' | 'payable'
 export type PlanType = 'free' | 'premium' | 'business'
@@ -25,6 +24,8 @@ export interface Database {
           business_type: string
           phone: string
           address: string
+          logo_url: string
+          description: string
           created_at: string
           updated_at: string
         }
@@ -36,6 +37,8 @@ export interface Database {
           business_type?: string
           phone?: string
           address?: string
+          logo_url?: string
+          description?: string
           created_at?: string
           updated_at?: string
         }
@@ -47,33 +50,8 @@ export interface Database {
           business_type?: string
           phone?: string
           address?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      business_members: {
-        Row: {
-          business_id: string
-          member_user_id: string
-          role: MemberRole
-          created_by: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          business_id: string
-          member_user_id: string
-          role: MemberRole
-          created_by?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          business_id?: string
-          member_user_id?: string
-          role?: MemberRole
-          created_by?: string | null
+          logo_url?: string
+          description?: string
           created_at?: string
           updated_at?: string
         }
@@ -82,7 +60,6 @@ export interface Database {
       business_plans: {
         Row: {
           plan: PlanType
-          max_members: number
           monthly_transaction_limit: number | null
           attachments_enabled: boolean
           price_amount: number
@@ -91,7 +68,6 @@ export interface Database {
         }
         Insert: {
           plan: PlanType
-          max_members?: number
           monthly_transaction_limit?: number | null
           attachments_enabled?: boolean
           price_amount?: number
@@ -100,7 +76,6 @@ export interface Database {
         }
         Update: {
           plan?: PlanType
-          max_members?: number
           monthly_transaction_limit?: number | null
           attachments_enabled?: boolean
           price_amount?: number
@@ -156,6 +131,7 @@ export interface Database {
           payment_method_id: string
           transaction_date: string
           description: string
+          note: string
           attachment_url: string | null
           created_at: string
           updated_at: string
@@ -171,6 +147,7 @@ export interface Database {
           payment_method_id: string
           transaction_date: string
           description?: string
+          note?: string
           attachment_url?: string | null
           created_at?: string
           updated_at?: string
@@ -186,6 +163,7 @@ export interface Database {
           payment_method_id?: string
           transaction_date?: string
           description?: string
+          note?: string
           attachment_url?: string | null
           created_at?: string
           updated_at?: string
@@ -277,6 +255,84 @@ export interface Database {
         }
         Relationships: []
       }
+      categories: {
+        Row: {
+          business_id: string
+          id: string
+          name: string
+          type: TransactionType
+          icon: string
+          color: string
+          is_default: boolean
+          is_active: boolean
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          id: string
+          name: string
+          type: TransactionType
+          icon?: string
+          color?: string
+          is_default?: boolean
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          id?: string
+          name?: string
+          type?: TransactionType
+          icon?: string
+          color?: string
+          is_default?: boolean
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      activity_logs: {
+        Row: {
+          id: string
+          business_id: string
+          actor_user_id: string | null
+          action: string
+          entity_type: string
+          entity_id: string | null
+          summary: string
+          metadata: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          actor_user_id?: string | null
+          action: string
+          entity_type: string
+          entity_id?: string | null
+          summary?: string
+          metadata?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          actor_user_id?: string | null
+          action?: string
+          entity_type?: string
+          entity_id?: string | null
+          summary?: string
+          metadata?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -293,35 +349,6 @@ export interface Database {
           p_business_type: string
           p_phone: string
           p_address: string
-        }
-        Returns: void
-      }
-      list_business_members: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          member_user_id: string
-          email: string
-          role: MemberRole
-          created_at: string
-        }[]
-      }
-      add_business_member: {
-        Args: {
-          p_email: string
-          p_role: MemberRole
-        }
-        Returns: string
-      }
-      update_business_member_role: {
-        Args: {
-          p_member_user_id: string
-          p_role: MemberRole
-        }
-        Returns: void
-      }
-      remove_business_member: {
-        Args: {
-          p_member_user_id: string
         }
         Returns: void
       }
@@ -350,6 +377,30 @@ export interface Database {
         }
         Returns: string
       }
+      get_web_dashboard_summary: {
+        Args: {
+          p_business_id: string
+          p_start: string
+          p_end: string
+          p_chart_start: string
+          p_chart_end: string
+          p_chart_unit: string
+          p_timezone: string
+        }
+        Returns: Json
+      }
+      update_business_profile_v2: {
+        Args: {
+          p_business_name: string
+          p_owner_name: string
+          p_business_type: string
+          p_phone: string
+          p_address: string
+          p_description: string
+          p_logo_url: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
@@ -366,12 +417,9 @@ export interface GetMyBusinessAccessResult {
   plan: PlanType
   subscription_status: SubscriptionStatus
   current_period_end: string | null
-  members_used: number
-  max_members: number
   transactions_used: number
   monthly_transaction_limit: number | null
   attachments_enabled: boolean
   can_manage_settings: boolean
-  can_manage_members: boolean
   can_create_transactions: boolean
 }

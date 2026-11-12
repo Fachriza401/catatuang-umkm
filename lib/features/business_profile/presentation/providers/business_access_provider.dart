@@ -35,6 +35,10 @@ final businessAccessProvider = FutureProvider.autoDispose<BusinessAccess?>((
       final access = BusinessAccess.fromJson(
         Map<String, dynamic>.from((response as Map).cast<String, dynamic>()),
       );
+      if (access.businessId != user.id) {
+        await database.removePreference(cacheKey);
+        return BusinessAccess.ownerFallback(user.id);
+      }
       await database.writePreference(cacheKey, jsonEncode(access.toJson()));
       return access;
     } on Object {
@@ -44,9 +48,11 @@ final businessAccessProvider = FutureProvider.autoDispose<BusinessAccess?>((
 
   if (cached != null) {
     try {
-      return BusinessAccess.fromJson(
+      final access = BusinessAccess.fromJson(
         Map<String, dynamic>.from(jsonDecode(cached) as Map),
       );
+      if (access.businessId == user.id) return access;
+      await database.removePreference(cacheKey);
     } on Object {
       await database.removePreference(cacheKey);
     }

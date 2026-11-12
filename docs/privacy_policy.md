@@ -18,7 +18,7 @@ CatatUang menyimpan data pembukuan secara lokal pada perangkat dan menyinkronkan
 
 ## Tujuan penggunaan
 
-Kami menggunakan data untuk menyediakan autentikasi, pencatatan dan sinkronisasi pembukuan, pengelolaan anggota usaha, lampiran bukti transaksi, keamanan, dukungan, serta pemenuhan kewajiban hukum yang berlaku.
+Kami menggunakan data untuk menyediakan autentikasi, pencatatan dan sinkronisasi pembukuan, pengelolaan profil usaha, lampiran bukti transaksi, keamanan, dukungan, serta pemenuhan kewajiban hukum yang berlaku.
 
 ## Penyedia layanan dan pembagian data
 
