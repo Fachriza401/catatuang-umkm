@@ -12,10 +12,12 @@ abstract final class AppRoutes {
   static const reports = '/reports';
   static const calculator = '/calculator';
   static const settings = '/settings';
+  static const belajar = '/belajar';
   static const transactionNew = '/transactions/new';
   static const debts = '/debts';
   static const debtNew = '/debts/new';
 
   static String transactionEdit(String id) => '/transactions/$id/edit';
   static String debtDetail(String id) => '/debts/$id';
+  static String learningModule(String slug) => '$belajar/$slug';
 }

@@ -12,6 +12,8 @@ export interface ExportPayload {
   fileName: string
 }
 
+export type ReportPaperFormat = 'a4' | 'thermal-58' | 'thermal-80'
+
 function downloadBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
@@ -23,7 +25,20 @@ function downloadBlob(blob: Blob, fileName: string) {
   URL.revokeObjectURL(url)
 }
 
-export function exportReportPdf(payload: ExportPayload) {
+export function exportReportPdf(
+  payload: ExportPayload,
+  paperFormat: ReportPaperFormat = 'a4',
+) {
+  const doc = createReportPdf(payload, paperFormat)
+  const suffix = paperFormat === 'a4' ? '' : `-${paperFormat}`
+  doc.save(`${payload.fileName}${suffix}.pdf`)
+}
+
+export function createReportPdf(
+  payload: ExportPayload,
+  paperFormat: ReportPaperFormat = 'a4',
+) {
+  if (paperFormat !== 'a4') return createReceiptPdf(payload, paperFormat)
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
 
@@ -75,7 +90,98 @@ export function exportReportPdf(payload: ExportPayload) {
     },
   })
 
-  doc.save(`${payload.fileName}.pdf`)
+  return doc
+}
+
+function createReceiptPdf(
+  payload: ExportPayload,
+  paperFormat: Exclude<ReportPaperFormat, 'a4'>,
+) {
+  const width = paperFormat === 'thermal-58' ? 58 : 80
+  const contentWidth = width - 10
+  const measureDoc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: [width, 1000],
+  })
+  const entries: Array<{
+    text: string
+    size: number
+    bold?: boolean
+    align?: 'left' | 'center'
+    gapBefore?: number
+  }> = [
+    { text: 'CatatUang', size: 12, bold: true, align: 'center' },
+    { text: payload.title, size: 9, bold: true, align: 'center', gapBefore: 1 },
+    { text: payload.businessName, size: 8, align: 'center', gapBefore: 1 },
+    { text: `Periode: ${payload.periodLabel}`, size: 7, align: 'center', gapBefore: 1 },
+    { text: '--------------------------------', size: 7, align: 'center', gapBefore: 2 },
+    ...payload.summaryLines.map((text) => ({
+      text,
+      size: 7.5,
+      gapBefore: 1,
+    })),
+    { text: '--------------------------------', size: 7, align: 'center', gapBefore: 2 },
+    { text: `RINCIAN TRANSAKSI (${payload.rows.length})`, size: 8, bold: true, gapBefore: 2 },
+  ]
+
+  for (const row of payload.rows) {
+    const date = String(row[0] ?? '')
+    const description = String(row[1] || 'Transaksi')
+    const category = String(row[2] ?? '')
+    const type = String(row[3] ?? '')
+    const amount = Number(row[5] ?? 0)
+    const amountLabel = Number.isFinite(amount)
+      ? `${amount < 0 ? '-' : '+'}${new Intl.NumberFormat('id-ID', {
+          style: 'currency',
+          currency: 'IDR',
+          maximumFractionDigits: 0,
+        }).format(Math.abs(amount))}`
+      : String(row[5] ?? '')
+    entries.push(
+      { text: `${date}  ${type}`, size: 7, bold: true, gapBefore: 2 },
+      { text: description, size: 8 },
+      { text: `${category}  ${amountLabel}`, size: 7 },
+      { text: '--------------------------------', size: 6, align: 'center', gapBefore: 1 },
+    )
+  }
+
+  entries.push({
+    text: `Dicetak ${new Date().toLocaleString('id-ID')}`,
+    size: 6.5,
+    align: 'center',
+    gapBefore: 2,
+  })
+
+  let contentHeight = 8
+  for (const entry of entries) {
+    measureDoc.setFont('helvetica', entry.bold ? 'bold' : 'normal')
+    measureDoc.setFontSize(entry.size)
+    const lines = measureDoc.splitTextToSize(entry.text, contentWidth)
+    contentHeight += (entry.gapBefore ?? 0) + lines.length * (entry.size * 0.42 + 0.5)
+  }
+  contentHeight += 5
+
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: [width, contentHeight],
+  })
+  let cursorY = 5
+  for (const entry of entries) {
+    doc.setFont('helvetica', entry.bold ? 'bold' : 'normal')
+    doc.setFontSize(entry.size)
+    doc.setTextColor(15, 23, 42)
+    cursorY += entry.gapBefore ?? 0
+    const lines = doc.splitTextToSize(entry.text, contentWidth)
+    const x = entry.align === 'center' ? width / 2 : 5
+    for (const line of lines) {
+      doc.text(line, x, cursorY, { align: entry.align ?? 'left' })
+      cursorY += entry.size * 0.42 + 0.5
+    }
+  }
+
+  return doc
 }
 
 export async function exportReportExcel(payload: ExportPayload) {

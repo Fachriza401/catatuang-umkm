@@ -37,12 +37,13 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
   DateTime _anchor = DateTime.now();
   ReportDateRange? _customRange;
   bool _isExporting = false;
+  ReportPdfFormat _pdfFormat = ReportPdfFormat.a4;
 
   ReportDateRange get _range => ReportDateRange.forPeriod(
-        period: _period,
-        anchor: _anchor,
-        customRange: _customRange,
-      );
+    period: _period,
+    anchor: _anchor,
+    customRange: _customRange,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +53,9 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
         body: Center(child: Text('Sesi pengguna tidak tersedia.')),
       );
     }
-    final access = ref.watch(businessAccessProvider).when(
+    final access = ref
+        .watch(businessAccessProvider)
+        .when(
           data: (value) => value,
           loading: () => null,
           error: (_, _) => null,
@@ -128,6 +131,36 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                 children: [
                   _periodControls(report.range),
                   const SizedBox(height: AppSpacing.lg),
+                  DropdownButtonFormField<ReportPdfFormat>(
+                    initialValue: _pdfFormat,
+                    decoration: const InputDecoration(
+                      labelText: 'Ukuran kertas PDF',
+                    ),
+                    items: [
+                      for (final format in ReportPdfFormat.values)
+                        DropdownMenuItem(
+                          value: format,
+                          child: Text(format.label),
+                        ),
+                    ],
+                    onChanged: _isExporting
+                        ? null
+                        : (format) {
+                            if (format != null) {
+                              setState(() => _pdfFormat = format);
+                            }
+                          },
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    _pdfFormat == ReportPdfFormat.a4
+                        ? 'PDF dibuat sesuai ukuran A4.'
+                        : 'PDF struk dibuat dengan lebar kertas ${_pdfFormat == ReportPdfFormat.thermal58 ? '58' : '80'} mm.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
                   Row(
                     children: [
                       Expanded(
@@ -385,9 +418,9 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
           Text(
             CurrencyFormatter.format(report.net.abs()),
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
@@ -470,9 +503,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                               space: 6,
                               child: Text(
                                 _chartLabel(points[index].bucketStart, report),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelSmall
+                                style: Theme.of(context).textTheme.labelSmall
                                     ?.copyWith(color: AppColors.textMuted),
                               ),
                             );
@@ -548,13 +579,18 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       final bytes = await _pdfService.build(
         report: report,
         businessProfile: profile,
+        format: _pdfFormat,
       );
       final filename =
-          'CatatUang-Laporan-${report.range.start.toIso8601String().substring(0, 10)}.pdf';
+          'CatatUang-Laporan-${report.range.start.toIso8601String().substring(0, 10)}-${_pdfFormat.name}.pdf';
       if (share) {
         await Printing.sharePdf(bytes: bytes, filename: filename);
       } else {
-        await Printing.layoutPdf(name: filename, onLayout: (_) async => bytes);
+        await Printing.layoutPdf(
+          name: filename,
+          format: _pdfService.pageFormatFor(report, _pdfFormat),
+          onLayout: (_) async => bytes,
+        );
       }
     } catch (_) {
       if (!mounted) return;
@@ -615,9 +651,9 @@ class _MetricTile extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: metric.color,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: metric.color,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
@@ -649,9 +685,9 @@ class _DebtAmount extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
@@ -716,9 +752,9 @@ class _TransactionRow extends StatelessWidget {
             '${income ? '+' : '-'}${CurrencyFormatter.format(transaction.amount)}',
             maxLines: 1,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),

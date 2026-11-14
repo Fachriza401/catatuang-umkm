@@ -20,19 +20,14 @@ const appNavigationDestinations = <NavigationDestination>[
     label: 'Utang',
   ),
   NavigationDestination(
-    icon: Icon(Icons.calculate_outlined),
-    selectedIcon: Icon(Icons.calculate_rounded),
-    label: 'Kalkulator',
+    icon: Icon(Icons.menu_book_outlined),
+    selectedIcon: Icon(Icons.menu_book_rounded),
+    label: 'Belajar',
   ),
   NavigationDestination(
-    icon: Icon(Icons.analytics_outlined),
-    selectedIcon: Icon(Icons.analytics_rounded),
-    label: 'Laporan',
-  ),
-  NavigationDestination(
-    icon: Icon(Icons.storefront_outlined),
-    selectedIcon: Icon(Icons.storefront_rounded),
-    label: 'Profil',
+    icon: Icon(Icons.more_horiz),
+    selectedIcon: Icon(Icons.more_horiz),
+    label: 'Lainnya',
   ),
 ];
 
@@ -43,15 +38,34 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final selectedIndex = switch (navigationShell.currentIndex) {
+      0 => 0,
+      1 => 1,
+      2 => 2,
+      6 => 3,
+      _ => 4,
+    };
+
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
+        selectedIndex: selectedIndex,
         height: 72,
         indicatorColor: AppColors.primarySoft,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         destinations: appNavigationDestinations,
         onDestinationSelected: (index) {
+          if (index == 3) {
+            navigationShell.goBranch(
+              6,
+              initialLocation: navigationShell.currentIndex == 6,
+            );
+            return;
+          }
+          if (index == 4) {
+            _showMoreDestinations(context);
+            return;
+          }
           navigationShell.goBranch(
             index,
             initialLocation: index == navigationShell.currentIndex,
@@ -59,5 +73,58 @@ class AppShell extends StatelessWidget {
         },
       ),
     );
+  }
+
+  void _showMoreDestinations(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _MoreDestinationTile(
+              icon: Icons.calculate_outlined,
+              label: 'Kalkulator',
+              onTap: () => _selectMoreDestination(sheetContext, 3),
+            ),
+            _MoreDestinationTile(
+              icon: Icons.analytics_outlined,
+              label: 'Laporan',
+              onTap: () => _selectMoreDestination(sheetContext, 4),
+            ),
+            _MoreDestinationTile(
+              icon: Icons.storefront_outlined,
+              label: 'Profil',
+              onTap: () => _selectMoreDestination(sheetContext, 5),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _selectMoreDestination(BuildContext context, int branchIndex) {
+    navigationShell.goBranch(
+      branchIndex,
+      initialLocation: navigationShell.currentIndex == branchIndex,
+    );
+    Navigator.of(context).pop();
+  }
+}
+
+class _MoreDestinationTile extends StatelessWidget {
+  const _MoreDestinationTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(leading: Icon(icon), title: Text(label), onTap: onTap);
   }
 }

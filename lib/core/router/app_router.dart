@@ -13,6 +13,9 @@ import '../../features/auth/presentation/pages/verify_email_page.dart';
 import '../../features/auth/presentation/providers/auth_providers.dart';
 import '../../features/business_profile/presentation/pages/business_profile_setup_page.dart';
 import '../../features/business_profile/presentation/pages/business_settings_page.dart';
+import '../../features/belajar/data/learning_modules.dart';
+import '../../features/belajar/presentation/pages/belajar_screen.dart';
+import '../../features/belajar/presentation/pages/materi_detail_screen.dart';
 import '../../features/calculator/presentation/pages/calculator_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/debts/presentation/pages/debt_detail_page.dart';
@@ -50,6 +53,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           location == AppRoutes.reports ||
           location == AppRoutes.calculator ||
           location == AppRoutes.settings ||
+          location.startsWith(AppRoutes.belajar) ||
           location == AppRoutes.setupProfile ||
           location.startsWith('/transactions') ||
           location.startsWith(AppRoutes.debts);
@@ -173,6 +177,26 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.settings,
                 builder: (context, state) => const BusinessSettingsPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.belajar,
+                builder: (context, state) => const BelajarScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':slug',
+                    builder: (context, state) {
+                      final slug = state.pathParameters['slug'];
+                      final module = learningModules
+                          .where((item) => item.slug == slug)
+                          .firstOrNull;
+                      return MateriDetailScreen(module: module);
+                    },
+                  ),
+                ],
               ),
             ],
           ),

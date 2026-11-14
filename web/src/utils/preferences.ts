@@ -1,9 +1,5 @@
 export interface AppPreferences {
   timezone: string
-  dateFormat: 'id-ID' | 'en-GB'
-  reportPeriod: 'monthly' | 'weekly' | 'yearly'
-  notifyDueDates: boolean
-  notifyWeeklyReport: boolean
   compactSidebar: boolean
 }
 
@@ -11,10 +7,6 @@ const STORAGE_KEY = 'catatuang_web_preferences'
 
 export const defaultPreferences: AppPreferences = {
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Jakarta',
-  dateFormat: 'id-ID',
-  reportPeriod: 'monthly',
-  notifyDueDates: true,
-  notifyWeeklyReport: false,
   compactSidebar: false,
 }
 

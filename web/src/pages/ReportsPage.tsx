@@ -25,7 +25,7 @@ import {
   parseDateInput,
   sanitizeFileName,
 } from '../utils/format'
-import { exportReportExcel, exportReportPdf } from '../utils/export'
+import { exportReportExcel, exportReportPdf, type ReportPaperFormat } from '../utils/export'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
@@ -51,6 +51,7 @@ export function ReportsPage() {
   const [startInput, setStartInput] = useState(() => formatDateInput(initialRange.start))
   const [endInput, setEndInput] = useState(() => formatDateInput(addDays(initialRange.end, -1)))
   const [exporting, setExporting] = useState<'pdf' | 'excel' | null>(null)
+  const [paperFormat, setPaperFormat] = useState<ReportPaperFormat>('a4')
   const [exportError, setExportError] = useState<string | null>(null)
 
   const startDate = parseDateInput(startInput)
@@ -173,7 +174,7 @@ export function ReportsPage() {
     setExportError(null)
     setExporting('pdf')
     try {
-      exportReportPdf(buildExportPayload())
+      exportReportPdf(buildExportPayload(), paperFormat)
     } catch (error) {
       setExportError(error instanceof Error ? error.message : 'Gagal membuat PDF.')
     } finally {
@@ -205,6 +206,19 @@ export function ReportsPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <label className="flex min-h-11 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700">
+            <span>Ukuran PDF</span>
+            <select
+              aria-label="Ukuran kertas PDF"
+              value={paperFormat}
+              onChange={(event) => setPaperFormat(event.target.value as ReportPaperFormat)}
+              className="min-h-11 bg-transparent text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563EB]"
+            >
+              <option value="thermal-58">Struk 58 mm</option>
+              <option value="thermal-80">Struk 80 mm</option>
+              <option value="a4">A4</option>
+            </select>
+          </label>
           <Button
             variant="secondary"
             icon={exporting === 'pdf' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}

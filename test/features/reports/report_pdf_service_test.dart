@@ -8,6 +8,7 @@ import 'package:catat_uang/features/reports/domain/services/financial_report_cal
 import 'package:catat_uang/features/transactions/domain/entities/money_transaction.dart';
 import 'package:catat_uang/features/transactions/domain/entities/transaction_type.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pdf/pdf.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +37,35 @@ void main() {
       expect(text, startsWith('%PDF-'));
       expect(pageCount, greaterThan(0));
       if (count == 350) expect(pageCount, greaterThan(1));
+    });
+  }
+
+  for (final format in [ReportPdfFormat.thermal58, ReportPdfFormat.thermal80]) {
+    test('PDF struk ${format.label} menggunakan satu halaman gulung', () async {
+      final report = FinancialReportCalculator.build(
+        transactions: [_transaction(0), _transaction(1)],
+        debts: const <Debt>[],
+        period: ReportPeriod.yearly,
+        range: range,
+        generatedAt: DateTime(2027, 1, 1),
+      );
+
+      final bytes = await pdfService.build(report: report, format: format);
+      final text = latin1.decode(bytes);
+      final pageCount = RegExp(r'/Type\s*/Page\b').allMatches(text).length;
+      final pageFormat = pdfService.pageFormatFor(report, format);
+
+      expect(bytes, isNotEmpty);
+      expect(text, startsWith('%PDF-'));
+      expect(pageCount, 1);
+      expect(
+        pageFormat.width,
+        closeTo(
+          (format == ReportPdfFormat.thermal58 ? 58 : 80) * PdfPageFormat.mm,
+          0.1,
+        ),
+      );
+      expect(pageFormat.height, greaterThan(100 * PdfPageFormat.mm));
     });
   }
 }

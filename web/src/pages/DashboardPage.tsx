@@ -42,7 +42,7 @@ const periodOptions: Array<{ value: DashboardPeriod; label: string }> = [
 ]
 
 export function DashboardPage() {
-  const { user, currentBusiness, businessAccess, isBusinessLoading } = useAuth()
+  const { user, currentBusiness, isBusinessLoading } = useAuth()
   const [period, setPeriod] = useState<DashboardPeriod>('monthly')
   const [customStartInput, setCustomStartInput] = useState('')
   const [customEndInput, setCustomEndInput] = useState('')
@@ -81,18 +81,6 @@ export function DashboardPage() {
               </h1>
               <p className="mt-1 text-sm text-blue-100">
                 Selamat datang, <span className="font-semibold text-white">{profile.data?.owner_name || user?.email}</span>
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <div className="rounded-md border border-white/15 bg-white/10 px-4 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-200">Paket usaha</p>
-              <p className="text-sm font-bold capitalize">{businessAccess?.plan || 'free'}</p>
-            </div>
-            <div className="rounded-md border border-white/15 bg-white/10 px-4 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-200">Status akun</p>
-              <p className="text-sm font-bold capitalize text-emerald-300">
-                {businessAccess?.subscription_status || 'aktif'}
               </p>
             </div>
           </div>

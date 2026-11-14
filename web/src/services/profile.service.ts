@@ -13,6 +13,24 @@ export interface BusinessProfileInput {
   logo_url: string
 }
 
+export const profileImageMaxBytes = 5 * 1024 * 1024
+
+const imageExtensions = new Map([
+  ['image/jpeg', 'jpg'],
+  ['image/png', 'png'],
+  ['image/webp', 'webp'],
+])
+
+export function profileImageValidationError(file: File): string | null {
+  if (!imageExtensions.has(file.type)) {
+    return 'Pilih gambar berformat JPG, PNG, atau WebP.'
+  }
+  if (file.size > profileImageMaxBytes) {
+    return 'Ukuran gambar maksimal 5 MB.'
+  }
+  return null
+}
+
 export async function getBusinessProfile(businessId: string): Promise<BusinessProfile | null> {
   const { data, error } = await supabase
     .from('business_profiles')
@@ -38,7 +56,10 @@ export async function updateBusinessProfile(input: BusinessProfileInput): Promis
 }
 
 export async function uploadBusinessLogo(businessId: string, file: File): Promise<string> {
-  const extension = file.name.split('.').pop()?.toLowerCase() || 'png'
+  const validationError = profileImageValidationError(file)
+  if (validationError) throw new Error(validationError)
+  const extension = imageExtensions.get(file.type)
+  if (!extension) throw new Error('Format gambar tidak didukung.')
   const path = `${businessId}/logo-${Date.now()}.${extension}`
   const { error } = await supabase.storage
     .from('business-logos')
@@ -49,7 +70,10 @@ export async function uploadBusinessLogo(businessId: string, file: File): Promis
 }
 
 export async function uploadAvatar(userId: string, file: File): Promise<string> {
-  const extension = file.name.split('.').pop()?.toLowerCase() || 'png'
+  const validationError = profileImageValidationError(file)
+  if (validationError) throw new Error(validationError)
+  const extension = imageExtensions.get(file.type)
+  if (!extension) throw new Error('Format gambar tidak didukung.')
   const path = `${userId}/avatar-${Date.now()}.${extension}`
   const { error } = await supabase.storage
     .from('profile-avatars')

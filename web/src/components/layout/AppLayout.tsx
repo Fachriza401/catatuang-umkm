@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { LogOut, Menu, ShieldCheck } from 'lucide-react'
+import { LogOut, Menu } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { Sidebar } from './Sidebar'
 import { loadPreferences, savePreferences } from '../../utils/preferences'
@@ -13,11 +13,12 @@ const pageTitles: Record<string, string> = {
   '/reports': 'Laporan Keuangan',
   '/business-profile': 'Profil Usaha',
   '/settings': 'Pengaturan',
+  '/belajar': 'Belajar',
   '/developer-diagnostics': 'Developer Diagnostics',
 }
 
 export function AppLayout() {
-  const { user, currentBusiness, businessAccess, logout } = useAuth()
+  const { user, currentBusiness, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(() => loadPreferences().compactSidebar)
   const location = useLocation()
@@ -42,7 +43,8 @@ export function AppLayout() {
 
   const displayName = (user?.user_metadata?.full_name as string | undefined) || user?.email || 'Pengguna'
   const avatarUrl = user?.user_metadata?.avatar_url as string | undefined
-  const pageTitle = pageTitles[location.pathname] || 'CatatUang'
+  const pageTitle = pageTitles[location.pathname]
+    || (location.pathname.startsWith('/belajar/') ? 'Belajar' : 'CatatUang')
 
   return (
     <div className="min-h-screen bg-[#F3F6FB]">
@@ -74,14 +76,6 @@ export function AppLayout() {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="hidden items-center gap-2 rounded-md border border-slate-200 px-2.5 py-1.5 md:flex">
-                <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                <div className="text-right">
-                  <p className="text-[10px] font-semibold uppercase text-slate-400">Paket</p>
-                  <p className="text-xs font-bold capitalize text-slate-700">{businessAccess?.plan || 'free'}</p>
-                </div>
-              </div>
-
               <div className="hidden items-center gap-2 sm:flex">
                 <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-[#EFF6FF] text-xs font-bold text-[#2563EB]">
                   {avatarUrl ? (

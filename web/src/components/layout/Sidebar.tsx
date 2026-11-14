@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   BarChart3,
+  BookOpen,
   ChevronsLeft,
   ChevronsRight,
   HandCoins,
@@ -42,6 +43,7 @@ export function Sidebar({
     { to: '/categories', label: 'Kategori', icon: Tags, visible: true },
     { to: '/debts', label: 'Utang & Piutang', icon: HandCoins, visible: true },
     { to: '/reports', label: 'Laporan Keuangan', icon: BarChart3, visible: true },
+    { to: '/belajar', label: 'Belajar', icon: BookOpen, visible: true },
     { to: '/business-profile', label: 'Profil Usaha', icon: Store, visible: true },
     { to: '/settings', label: 'Pengaturan', icon: Settings, visible: true },
     {

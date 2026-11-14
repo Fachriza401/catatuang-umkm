@@ -16,6 +16,7 @@ import { ReportsPage } from './pages/ReportsPage'
 import { BusinessProfilePage } from './pages/BusinessProfilePage'
 import { SettingsPage } from './pages/SettingsPage'
 import { DeveloperDiagnosticsPage } from './pages/DeveloperDiagnosticsPage'
+import { LearningPage } from './pages/LearningPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -78,6 +79,8 @@ export default function App() {
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/business-profile" element={<BusinessProfilePage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/belajar" element={<LearningPage />} />
+              <Route path="/belajar/:slug" element={<LearningPage />} />
               <Route path="/developer-diagnostics" element={<DeveloperDiagnosticsPage />} />
             </Route>
 

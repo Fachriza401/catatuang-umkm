@@ -15,4 +15,19 @@
   body {
     font-family: var(--font-sans);
   }
+
+  a[href],
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  a[href]:focus-visible,
+  button:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 3px;
+  }
 }
